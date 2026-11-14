@@ -319,6 +319,47 @@ export function allowedWords({ profile, words, content }) {
   return out;
 }
 
+// ---------- Choosing the story for today ----------
+
+/** Every word the lessons teach, found by its lowercase spelling (January -> january). */
+function taughtIndex(content) {
+  const out = new Map();
+  const add = (e) => out.set(e.w.toLowerCase(), e.w);
+  content.STEPS.forEach((s) => s.words.forEach(add));
+  (content.SIGHT || []).forEach(add);
+  (content.EVERYDAY || []).forEach(add);
+  return out;
+}
+
+/** The words in a text that the app teaches but she has not learned yet, in reading order.
+ *  Helper words (a, in, it) are not taught one at a time, so they never count. */
+export function unknownWords(text, words, content) {
+  const taught = taughtIndex(content);
+  const out = [];
+  for (const t of tokens(text)) {
+    const w = taught.get(t);
+    if (!w || out.includes(t)) continue;
+    const s = statusOf(words, w);
+    if (s !== "learned" && s !== "placed") out.push(t);
+  }
+  return out;
+}
+
+/** The stories she can read today: every taught word in them is one she knows. */
+export function readableStories(list, words, content) {
+  return (list || []).filter((st) => unknownWords(st.text, words, content).length === 0);
+}
+
+/** Today's story. Her step's stories carry the sounds she is learning, so they lead;
+ *  once she can read an everyday story (months, colors, days), one comes every other day. */
+export function chooseStory({ step, words, content, stories, everydayStories, dayCount }) {
+  const list = stories[step] || stories[1];
+  const ready = readableStories(everydayStories, words, content);
+  if (!ready.length) return list[dayCount % list.length];
+  const turn = Math.floor(dayCount / 2);
+  return dayCount % 2 === 1 ? ready[turn % ready.length] : list[turn % list.length];
+}
+
 /** How many of a story's words she has read so far, following along as she speaks. */
 export function matchReadAlong(storyWords, heardTokens, homophones = {}) {
   let w = 0;

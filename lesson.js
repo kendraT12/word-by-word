@@ -2,7 +2,7 @@
 
 import * as E from "./engine.js";
 import * as C from "./content.js";
-import { STORIES } from "./stories.js";
+import { STORIES, EVERYDAY_STORIES } from "./stories.js";
 import { state, today, show, screen, save, dayLog, practiceDays, say } from "./state.js";
 import { el, div, p, h, btn, card, mount, wordEl, bar, shuffle, sleep } from "./ui.js";
 import { runWord, setHeader, readAlong, FLUENT_MS } from "./word.js";
@@ -142,17 +142,27 @@ function teachPattern(stepDef, plan) {
 
 // ---------- Story time ----------
 
+/** Everyday stories in the order she meets the words: colors, then numbers, days, months, seasons.
+ *  The flag marks them so a Claude-written story never takes their turn: months and colours
+ *  are the point of those days. */
+const EVERYDAY_LIST = ["color", "number", "day", "month", "season"]
+  .flatMap((c) => EVERYDAY_STORIES[c].map((st) => ({ ...st, everyday: true })));
+
 function pickStory(step) {
-  const list = STORIES[step] || STORIES[1];
-  return list[practiceDays().length % list.length];
+  return E.chooseStory({
+    step, words: state.words, content: C,
+    stories: STORIES, everydayStories: EVERYDAY_LIST,
+    dayCount: practiceDays().length,
+  });
 }
 
 async function storyTime() {
   const prof = state.profile;
   const log = dayLog();
+  const builtIn = pickStory(prof.step);
   let story = null;
 
-  if (state.ai && state.ai.available) {
+  if (!builtIn.everyday && state.ai && state.ai.available) {
     mount([card([p("center muted", "Writing you a story…")])]);
     story = await state.ai.story({
       name: prof.name, favorites: prof.favorites || [],
@@ -161,7 +171,7 @@ async function storyTime() {
       sentences: Math.min(8, 4 + Math.floor(prof.step / 3)),
     });
   }
-  if (!story) story = pickStory(prof.step);
+  if (!story) story = builtIn;
 
   const text = withName(story.text);
   const title = withName(story.title);

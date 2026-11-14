@@ -43,6 +43,11 @@ just a word she can read but *the first month of the year*. There are 60 built-i
 six per step, and every word in every one of them is a word she has already been taught —
 no story ever asks her to guess.
 
+On top of those there are 15 everyday stories — the colors, the numbers one to twenty, the
+days, all twelve months and the four seasons, met again in a sentence instead of only in
+their own lesson. One comes every other day, and only once she knows the everyday words
+inside it.
+
 ### The grown-up corner
 
 Behind a 4-digit code: her streak and minutes, how many words she reads whole versus still

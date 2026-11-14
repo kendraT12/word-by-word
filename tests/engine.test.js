@@ -338,3 +338,34 @@ test("summary: a brand new learner still gets a readable note", () => {
   ok(!text.includes("undefined"), text);
   ok(!text.includes("NaN"), text);
 });
+
+// ---- Choosing the story for today ----
+const st = (title, text) => ({ title, text, q: [] });
+const stepStories = { 1: [st("S1", "The cat sat."), st("S2", "The pig is big."), st("S3", "A map and a hat.")] };
+const dayStories = [st("Colors", "The cat is red and the pig is blue."), st("More", "The map is green.")];
+
+test("unknownWords: names the taught words she has not learned, and leaves helpers alone", () => {
+  const words = { cat: learned(), red: learned() };
+  eq(E.unknownWords("The cat is red and the pig is blue.", words, content), ["the", "pig", "blue"]);
+});
+test("unknownWords: a word credited by the first-day check counts as known", () => {
+  const words = { cat: { status: "placed" }, red: { status: "placed" }, the: learned(), pig: learned(), blue: learned() };
+  eq(E.unknownWords("The cat is red and the pig is blue.", words, content), []);
+});
+test("readableStories: keeps only the ones she can read today", () => {
+  const words = { the: learned(), cat: learned(), pig: learned(), red: learned(), blue: learned() };
+  eq(E.readableStories(dayStories, words, content).map((s) => s.title), ["Colors"]);
+});
+test("chooseStory: before any everyday story is ready, it rotates the step stories", () => {
+  const words = {};
+  const pick = (dayCount) => E.chooseStory({ step: 1, words, content, stories: stepStories, everydayStories: dayStories, dayCount }).title;
+  eq([0, 1, 2, 3].map(pick), ["S1", "S2", "S3", "S1"]);
+});
+test("chooseStory: once she can read one, every other day is an everyday story", () => {
+  const words = { the: learned(), cat: learned(), pig: learned(), map: learned(), red: learned(), blue: learned(), green: learned() };
+  const pick = (dayCount) => E.chooseStory({ step: 1, words, content, stories: stepStories, everydayStories: dayStories, dayCount }).title;
+  eq([0, 1, 2, 3, 4, 5].map(pick), ["S1", "Colors", "S2", "More", "S3", "Colors"]);
+});
+test("chooseStory: no step stories for her step falls back to step 1", () => {
+  ok(E.chooseStory({ step: 9, words: {}, content, stories: stepStories, everydayStories: [], dayCount: 0 }).title === "S1");
+});

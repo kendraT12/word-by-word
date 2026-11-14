@@ -1,5 +1,13 @@
-// Word by Word: built-in stories, six per step. Used when Claude can't write a new one.
-// Each story uses only words taught up to its step, plus sight words and helper words.
+// Word by Word: built-in stories. Used when Claude can't write a new one.
+//
+// STORIES: six per phonics step, using only words taught up to that step, plus sight
+// words and helper words.
+//
+// EVERYDAY_STORIES: the colors, numbers, days, months and seasons, met again in a
+// sentence instead of only in their own lesson. These are held to the sounds of the
+// first four steps, so they are readable as soon as she knows the everyday words in
+// them — which is the gate the engine applies before offering one.
+//
 // {name} is replaced with her name.
 
 const q = (ask, answer, a, b) => ({ ask, answer, choices: [answer, a, b] });
@@ -265,5 +273,80 @@ export const STORIES = {
       "A girl at school did not have a friend. She sat by the window all morning. I went to sit with her. We did read a book together. Then we went out to play in the school garden. Now she is my friend.",
       q("Where did the girl sit?", "by the window", "in the kitchen", "in the car"),
       q("What did we do together?", "read a book", "eat food", "look at a picture")),
+  ],
+};
+
+// The everyday words, read in a sentence. Kept to the first four steps' sounds, and
+// offered only once she knows the everyday words inside — see engine.chooseStory.
+export const EVERYDAY_STORIES = {
+  color: [
+    story("Red, Blue and Yellow",
+      "My cat has a red hat. My dog has a blue hat. The big pig has a yellow hat. The bug is green and it has no hat. I got a hat too, and it is red and blue.",
+      q("What color is the big pig hat?", "yellow", "red", "blue"),
+      q("Who is green?", "the bug", "the cat", "the dog")),
+    story("Orange, Purple and Pink",
+      "I got an orange cup. Mom has a purple cup. The dog has a pink bag. We sit in the sun and had a nap. The orange cup is my cup, so do not get it!",
+      q("What color is my cup?", "orange", "purple", "pink"),
+      q("Who has the purple cup?", "Mom", "Dad", "the dog")),
+    story("Brown, Black, White and Gray",
+      "The mud is brown. The pig in the mud is brown too. My dog is black and white. A big gray cat sat on my bed. The gray cat did not sit by the dog. So the cat ran off.",
+      q("What color is the mud?", "brown", "black", "white"),
+      q("What color is my dog?", "black and white", "gray", "pink")),
+  ],
+  number: [
+    story("One to Five",
+      "I look in the dish. I get one fish! Then I get two fish. Now I get three fish, four fish, five fish. That is a lot for one little dish!",
+      q("What is in the dish?", "fish", "milk", "mud"),
+      q("What number did the fish get to?", "five", "two", "ten")),
+    story("Six to Ten",
+      "I can hop six, seven, eight. Then I hop nine and ten! Dad can hop to ten too. Mom can hop to ten and she can go on. My dog can not hop to ten, but he can run.",
+      q("What number did I hop to?", "ten", "six", "eight"),
+      q("Who can not hop to ten?", "my dog", "Mom", "Dad")),
+    story("Eleven to Twenty",
+      "I can go on from ten. Eleven, twelve, thirteen, fourteen, fifteen! Then sixteen, seventeen, eighteen, nineteen, twenty. Twenty is a lot. Mom said twenty is a lot of fish. I can do it all again, up to twenty!",
+      q("What is the last number I said?", "twenty", "ten", "twelve"),
+      q("What did Mom say twenty is?", "a lot of fish", "a big dish", "not a lot")),
+  ],
+  day: [
+    story("Monday to Friday",
+      "On Monday I get up and run. On Tuesday and Wednesday I have math. On Thursday I sit with Mom. On Friday I can run with my dog. I like Friday a lot.",
+      q("What day do I have math?", "Tuesday and Wednesday", "Monday", "Friday"),
+      q("What day do I like a lot?", "Friday", "Monday", "Thursday")),
+    story("Saturday and Sunday",
+      "On Saturday I do not have to get up. I can nap in my bed. Mom and Dad have a bath for the dog on Saturday. On Sunday we have a big dish of jam. Saturday and Sunday are fun.",
+      q("What day do I not have to get up?", "Saturday", "Monday", "Friday"),
+      q("What do we have on Sunday?", "a big dish of jam", "math", "a nap")),
+    story("Today, Yesterday and Tomorrow",
+      "Yesterday I had a bath and went to bed. Today I can run and hop in the sun. Today is Wednesday. Tomorrow is Thursday. Tomorrow I will sit with Dad. I want tomorrow to come!",
+      q("What day is today?", "Wednesday", "Thursday", "Monday"),
+      q("What will I do tomorrow?", "sit with Dad", "have a bath", "have math")),
+  ],
+  month: [
+    story("January, February, March",
+      "In January it is wet and I have a big hat on. In February I have the hat on too. Then in March the sun is up. In March I can run and hop in the mud. I like March a lot.",
+      q("When is the sun up?", "in March", "in January", "in February"),
+      q("What do I have on in January?", "a big hat", "a flag", "a sock")),
+    story("April, May, June",
+      "In April we get a lot of wet mud. My dog can run in the mud and get a bath. In May I can sit in the sun with Mom. Then in June it is hot, hot, hot. In June we sit in the sun and have a lot of fun.",
+      q("When is it hot, hot, hot?", "in June", "in April", "in May"),
+      q("What do we do in June?", "sit in the sun", "sit in the mud", "have a bath")),
+    story("July, August, September",
+      "In July I run with Dad. We have a big bath in the sun in July. In August it is hot and we run again. Then in September I have math again. In September the sun is not as hot.",
+      q("When do we have a big bath in the sun?", "in July", "in August", "in September"),
+      q("What do I have again in September?", "math", "a trip", "a bath")),
+    story("October, November, December",
+      "In October I have a big bag and a big hat. In November it is not hot and I have the hat on. Then in December it is wet and we are in bed a lot. In December Mom and Dad have a big dish of jam. I like December a lot.",
+      q("When is it wet?", "in December", "in October", "in November"),
+      q("What do Mom and Dad have in December?", "a big dish of jam", "a big bag", "a hat")),
+  ],
+  season: [
+    story("Winter and Spring",
+      "In winter it is not hot. In winter I have a hat and I sit in bed a lot. Then spring is here, and the mud is wet. In spring my dog can run and get mud on him. I like spring a lot.",
+      q("When do I sit in bed a lot?", "in winter", "in spring", "in summer"),
+      q("What is wet in spring?", "the mud", "my hat", "the bed")),
+    story("Summer and Fall",
+      "In summer the sun is hot. In summer we run and hop and have a lot of fun. Then fall is here. In fall it is not as hot, and I have a big hat on. In fall I have math again. I like summer a lot.",
+      q("When is the sun hot?", "in summer", "in fall", "in winter"),
+      q("What do I have on in fall?", "a big hat", "a sock", "a flag")),
   ],
 };
