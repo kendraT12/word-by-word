@@ -1,0 +1,5 @@
+import "./engine.test.js";
+import "./content.test.js";
+import "./platform.test.js";
+import { report } from "./t.js";
+await report();

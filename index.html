@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Word by Word</title>
+<meta name="description" content="Reading and spelling practice, one word at a time.">
+<meta name="theme-color" content="#0F6E7E">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Word by Word">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<link rel="icon" type="image/png" sizes="512x512" href="assets/icon-512.png">
+<style>
+  /* The same base the Artifact viewer applies, so the app looks identical either way. */
+  :root { color-scheme: light; padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+  body { margin: 0; font: 14px system-ui, sans-serif; }
+  img { max-width: 100%; }
+  [hidden] { display: none !important; }
+  /* A child's app should not select text or bounce when she taps and drags. */
+  body { -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; overscroll-behavior-y: contain; }
+  input, pre { -webkit-user-select: text; user-select: text; }
+</style>
+</head>
+<body>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Andika:wght@400;700&family=Lexend:wght@400;500;600&display=swap">
+<style>
+  /* One centred column. Words are the only images on the page.
+     Andika is drawn for new readers: single-storey a and g, as she is taught to write them. */
+  :root {
+    --bg: #EEF2F4;
+    --surface: #FFFFFF;
+    --sunk: #E3EAEE;
+    --ink: #17242B;
+    --muted: #5A6C76;
+    --line: #D3DDE2;
+    --accent: #0F6E7E;
+    --accent-ink: #FFFFFF;
+    --good: #2E7D4F;
+    --good-soft: #DFF1E6;
+    --hi-bg: #FFE49B;
+    --hi-ink: #4A3907;
+    --word: "Andika", "Comic Sans MS", "Trebuchet MS", sans-serif;
+    --ui: "Lexend", ui-sans-serif, system-ui, sans-serif;
+    --r: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #12181B; --surface: #1B2327; --sunk: #141A1D; --ink: #E8EFF2; --muted: #9FB2BB;
+      --line: #2C383E; --accent: #58C8D8; --accent-ink: #06252B; --good: #68D295; --good-soft: #17342A;
+      --hi-bg: #6A560F; --hi-ink: #FFE9A8; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #12181B; --surface: #1B2327; --sunk: #141A1D; --ink: #E8EFF2; --muted: #9FB2BB;
+    --line: #2C383E; --accent: #58C8D8; --accent-ink: #06252B; --good: #68D295; --good-soft: #17342A;
+    --hi-bg: #6A560F; --hi-ink: #FFE9A8; color-scheme: dark;
+  }
+
+  body { background: var(--bg); color: var(--ink); font-family: var(--ui); line-height: 1.5; }
+  #app {
+    max-width: 680px; margin: 0 auto; padding-block: 20px 56px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    display: flex; flex-direction: column; gap: 20px;
+  }
+  h1, h2, h3 { margin: 0; text-wrap: balance; font-weight: 600; letter-spacing: -0.01em; }
+  h1 { font-size: 1.5rem; }
+  h2 { font-size: 1.2rem; }
+  h3 { font-size: 1rem; }
+  p { margin: 0; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+  .stack { display: flex; flex-direction: column; gap: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .spread { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; justify-content: space-between; }
+  .grow { flex: 1 1 auto; min-width: 0; }
+  .muted { color: var(--muted); }
+  .small { font-size: 0.875rem; }
+  .tiny { font-size: 0.8rem; }
+  .center { text-align: center; }
+  .nums { font-variant-numeric: tabular-nums; }
+
+  /* Buttons: every control is a word, never an icon. */
+  button { font: inherit; font-family: var(--ui); cursor: pointer; }
+  .btn {
+    min-height: 52px; padding: 12px 20px; border-radius: 12px; border: 1px solid var(--line);
+    background: var(--surface); color: var(--ink); font-size: 1rem; font-weight: 500;
+  }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  .btn.big { min-height: 64px; font-size: 1.25rem; padding: 14px 26px; }
+  .btn.quiet { background: transparent; border-color: transparent; color: var(--muted); min-height: 44px; }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+  .btn.picked { border-color: var(--accent); border-width: 2px; }
+  .btn.right { background: var(--good-soft); border-color: var(--good); }
+
+  /* The word she is reading. */
+  .word { font-family: var(--word); font-weight: 700; font-size: clamp(2.75rem, 13vw, 5.5rem); line-height: 1.15; letter-spacing: 0.01em; word-break: break-word; }
+  .reading { font-family: var(--word); font-size: clamp(1.35rem, 5.2vw, 1.75rem); line-height: 1.9; }
+  mark.hi { background: var(--hi-bg); color: var(--hi-ink); border-radius: 4px; padding: 0 0.04em; }
+
+  input, select {
+    font: inherit; font-family: var(--ui); min-height: 48px; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink); width: 100%;
+  }
+  label { display: flex; flex-direction: column; gap: 6px; font-size: 0.9rem; color: var(--muted); }
+  .code-input { font-size: 1.6rem; letter-spacing: 0.5em; text-align: center; font-variant-numeric: tabular-nums; }
+
+  .bar { background: var(--sunk); border-radius: 999px; height: 10px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; background: var(--accent); }
+  .list { display: flex; flex-direction: column; gap: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { font-family: var(--word); background: var(--sunk); border-radius: 999px; padding: 6px 12px; font-size: 1rem; }
+  .note { background: var(--sunk); border-radius: 10px; padding: 12px 14px; }
+  .divider { height: 1px; background: var(--line); }
+  @media (prefers-reduced-motion: no-preference) {
+    .pop { animation: pop 0.25s ease-out; }
+    @keyframes pop { from { transform: scale(0.94); opacity: 0.4; } to { transform: scale(1); opacity: 1; } }
+  }
+</style>
+
+<main id="app">
+  <div class="card">
+    <h1>Word by Word</h1>
+    <p class="muted">Loading…</p>
+  </div>
+</main>
+
+<script type="module" src="app.js"></script>
+
+<script>
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("sw.js").catch(function () { /* works online regardless */ });
+    });
+  }
+</script>
+</body>
+</html>
