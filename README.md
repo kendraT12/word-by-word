@@ -39,8 +39,9 @@ Ten steps, from short vowels (`cat`, `sit`) through `sh`/`ch`/`th`, blends, magi
 teams, `ar`/`or`/`er`, word endings and longer words, up to second-grade stories — 152 words
 in all, plus 40 common sight words and 57 everyday words: colours, numbers one to twenty,
 days, months and seasons. Each everyday word teaches its meaning too, so `January` is not
-just a word she can read but *the first month of the year*. There are 30 built-in stories,
-each written to use only the words she has been taught by that point.
+just a word she can read but *the first month of the year*. There are 60 built-in stories,
+six per step, and every word in every one of them is a word she has already been taught —
+no story ever asks her to guess.
 
 ### The grown-up corner
 

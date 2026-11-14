@@ -1,5 +1,5 @@
 // Keeps the app working with no internet, so a lesson never depends on wifi.
-const CACHE = "word-by-word-20261114-101112";
+const CACHE = "word-by-word-20261114-113801";
 const FILES = [
   "./",
   "./index.html",

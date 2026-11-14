@@ -63,10 +63,10 @@ test("content: no emoji or pictographs anywhere", () => {
   const text = JSON.stringify([C.STEPS, C.SIGHT, C.EVERYDAY, C.HELPERS, C.PLACEMENT_SOUNDS, S.STORIES]);
   ok(!/\p{Extended_Pictographic}/u.test(text));
 });
-test("stories: 3 per step, 4 to 8 sentences, questions answerable", () => {
+test("stories: 6 per step, 4 to 8 sentences, questions answerable", () => {
   for (const s of C.STEPS) {
     const list = S.STORIES[s.id];
-    ok(list && list.length === 3, "step " + s.id + " needs 3 stories");
+    ok(list && list.length === 6, "step " + s.id + " needs 6 stories, has " + (list ? list.length : 0));
     for (const st of list) {
       const n = st.text.split(/[.!?]+/).filter((x) => x.trim()).length;
       ok(n >= 4 && n <= 8, st.title + " has " + n + " sentences");
@@ -75,7 +75,14 @@ test("stories: 3 per step, 4 to 8 sentences, questions answerable", () => {
     }
   }
 });
-test("stories: each uses only words taught by its step (at most 2 others)", () => {
+test("stories: no title is used twice, so a repeat always reads as a repeat", () => {
+  const seen = new Set();
+  for (const s of C.STEPS) for (const st of S.STORIES[s.id]) {
+    ok(!seen.has(st.title), "two stories are called \"" + st.title + "\"");
+    seen.add(st.title);
+  }
+});
+test("stories: each uses only words taught by its step, with nothing left over", () => {
   for (const s of C.STEPS) {
     const allowed = new Set(["zoe"]);
     C.STEPS.slice(0, s.id).forEach((x) => x.words.forEach((e) => allowed.add(e.w.toLowerCase())));
@@ -83,7 +90,7 @@ test("stories: each uses only words taught by its step (at most 2 others)", () =
     C.HELPERS.forEach((h) => tokens(h).forEach((t) => allowed.add(t)));
     for (const st of S.STORIES[s.id]) {
       const off = offListWords(st.text.replaceAll("{name}", "Zoe"), allowed);
-      ok(off.length <= 2, "step " + s.id + " \"" + st.title + "\" off-list: " + off.join(", "));
+      ok(off.length === 0, "step " + s.id + " \"" + st.title + "\" off-list: " + off.join(", "));
     }
   }
 });
