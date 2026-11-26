@@ -476,9 +476,12 @@ export function buildMathLesson({ profile, facts, content, today }) {
 
   let newFamilies = nextFamilies(level.families, facts, content, FAMILIES_PER_LESSON);
   if (newFamilies.length < FAMILIES_PER_LESSON) {
+    // Whatever earlier levels left behind. She moves up at 80%, so every level leaves a
+    // few families untaught; they come back here once her own level has nothing open.
+    // Facts the first-day check marked "placed" are not open, so they are not re-taught.
     const earlier = content.LEVELS.slice(0, levelId - 1)
       .flatMap((l) => l.families)
-      .filter((f) => familyStarted(f, facts, content) && !newFamilies.some((g) => sameFam(g, f)));
+      .filter((f) => !newFamilies.some((g) => sameFam(g, f)));
     newFamilies = newFamilies.concat(
       nextFamilies(earlier, facts, content, FAMILIES_PER_LESSON - newFamilies.length)
     );
@@ -501,15 +504,39 @@ export function buildMathLesson({ profile, facts, content, today }) {
   return { level: levelId, warmup, newFamilies, reviews };
 }
 
+/** How far through a level she is.
+ *
+ *  A level is measured on the facts it TEACHES — its own families — never on the ones it
+ *  only drills again. Those belong to earlier levels, and a child the first-day check
+ *  started at level 3 was never taught them, so counting them made the level's bar
+ *  impossible to fill and left her there for good.
+ *
+ *  The last two levels teach nothing of their own, so they are measured on the facts they
+ *  drill that she has actually met. */
 export function levelProgress(levelId, facts, content) {
-  const keys = content.keysOfLevel(content.levelById(levelId));
+  const level = content.levelById(levelId);
+  const own = level.families.flatMap((f) => famKeys(f, content));
+  const met = (k) => { const st = statusOf(facts, k); return st !== "new" && st !== "placed"; };
+  const keys = own.length ? own : level.drills.filter(met);
   const learned = keys.filter((k) => statusOf(facts, k) === "learned").length;
   return { learned, total: keys.length, pct: keys.length ? learned / keys.length : 0 };
 }
 
 export function canAdvanceLevel(levelId, facts, content) {
   if (levelId >= content.LEVELS.length) return false;
-  return levelProgress(levelId, facts, content).pct >= 0.8;
+  const { total, pct } = levelProgress(levelId, facts, content);
+  return total > 0 && pct >= 0.8;
+}
+
+/** Every fact below the level the first-day check put her on. She is assumed to know
+ *  these, so they are marked "placed": not counted as learned, and never taught at her
+ *  from scratch. The reading side places her skipped words the same way. */
+export function placedBelowLevel(levelId, content) {
+  const out = [];
+  for (const level of content.LEVELS.slice(0, levelId - 1)) {
+    for (const fam of level.families) for (const k of famKeys(fam, content)) if (!out.includes(k)) out.push(k);
+  }
+  return out;
 }
 
 /** Facts she gets wrong most often, worst first — what to practise tonight. */
@@ -520,7 +547,7 @@ export function hardestFacts(facts, n = 5) {
     .slice(0, n);
 }
 
-const FADE_SCORE = { ok: 0, slow: 1, miss: 2 };
+const FADE_SCORE = { ok: 0, slow: 1, miss: 2, help: 2 };
 
 /** Does she tail off within a sitting? Compares the last third of each session against
  *  its first third. This reports what it sees; it never shortens the lesson by itself. */

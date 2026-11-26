@@ -13,6 +13,7 @@ import { askFact, runFact, MATH_STEPS } from "./math.js";
 screen("mathLesson", (params) => runMathLesson(params).catch(async (err) => {
   // She may be on her own: keep what she did and give her a way out.
   await save({ profile: true, facts: true, day: true }).catch(() => {});
+  setHeader("");
   state.mathLesson = null;
   mount([card([
     h(1, "Let's stop here"),
@@ -70,7 +71,7 @@ async function runMathLesson() {
   const step = () => { at++; setHeader("Maths " + at + " of " + total); };
 
   // Fast Facts: the ones she can work out but still works out. Speed is all they need.
-  if (plan.warmup.length) await fastFactsIntro(level);
+  if (plan.warmup.length) await fastFactsIntro();
   for (const key of plan.warmup) {
     if (outOfTime()) break;
     step();
@@ -92,13 +93,18 @@ async function runMathLesson() {
       levelId: plan.level, words: state.words, content: C, idea: level.idea,
     });
     if (result.triedMs) log.mathStartMs.push(result.triedMs);
-    // The whole family moves together: she met every fact in it just now.
-    for (const key of keys) {
+    // Only the first fact was timed, so only the first fact can be one she KNOWS. The
+    // rest of the family she filled in with the answer on the screen in front of her:
+    // right, but worked out, so they come back tomorrow in Fast Facts to be earned.
+    const firstBefore = state.facts[keys[0]];
+    state.facts[keys[0]] = E.applyRoutine(firstBefore, result, today(), MATH_STEPS, "tried");
+    learnedCheck(keys[0], firstBefore);
+    for (const key of keys.slice(1)) {
       const before = state.facts[key];
-      state.facts[key] = E.applyRoutine(before, result, today(), MATH_STEPS, "tried");
-      learnedCheck(key, before);
+      state.facts[key] = E.applyFast(before, (result.familyBy || {})[key] === "ok" ? "slow" : "miss", today());
     }
-    await noteItem(MATH_STEPS.map((k) => result[k]));
+    // The "why" step is reading, not answering, so it is not part of her maths trace.
+    await noteItem(["tried", "family", "problem"].map((k) => result[k]));
   }
 
   // Facts whose review has come round.
@@ -122,26 +128,31 @@ async function runMathLesson() {
   show("mathFinish");
 }
 
-function fastFactsIntro(level) {
+function fastFactsIntro() {
   return new Promise((resolve) => {
     say("Fast Facts! Answer as soon as you see it.");
     mount([card([
       h(1, "Fast Facts"),
       p("", "A sum comes up. Tap the answer as soon as you see it."),
       p("muted small", "No counting on your fingers — if you know it, it is already there."),
-      p("note small", level.name + ". " + level.idea),
       el("div", { class: "row", style: "justify-content:center" }, [btn("I am ready", resolve, "primary big")]),
     ])]);
   });
 }
 
+/** A new fact is announced, and nothing else.
+ *
+ *  This screen used to print the level's idea here. On level 3 that read "These two make
+ *  ten. 3 and 7 make 10." immediately before asking her 3 + 7 — she was reading the
+ *  answer off the screen, and it was saved as a fact she knew. The idea belongs to step
+ *  three, after she has tried it, and no idea carries a worked example any more. */
 function levelIdea(level, fam) {
   return new Promise((resolve) => {
-    say("A new one. " + level.idea);
+    say("Here is a new one. Have a go at it first.");
     mount([card([
       p("small muted center", "A new one"),
       el("div", { class: "sum center", text: fam[0] + " + " + fam[1] }),
-      p("note center", level.idea),
+      p("center", "Have a go at this one first. I will show you the trick after."),
       el("div", { class: "row", style: "justify-content:center" }, [btn("Let me try", resolve, "primary big")]),
     ])]);
   });
@@ -216,6 +227,7 @@ screen("mathCheckIntro", () => {
 });
 
 screen("mathCheck", async () => {
+  state.mathLesson = { check: true };
   const groups = checkFacts();
   const scores = {};
   const total = groups.reduce((n, g) => n + g.keys.length, 0);
@@ -231,7 +243,8 @@ screen("mathCheck", async () => {
       catch { r = { correct: false }; }
       scores[group.level].push(!!r.correct);
       // What she missed is where she starts, so it is seeded as practice, not as new.
-      if (!r.correct) {
+      // Running the check a second time never throws away a fact she has already earned.
+      if (!r.correct && !state.facts[key]) {
         state.facts[key] = { status: "practicing", lvl: 0, due: today(), helps: 0, seen: 1, lastSeen: today(), slow: false };
       }
     }
@@ -242,6 +255,14 @@ screen("mathCheck", async () => {
   prof.mathLevel = E.mathPlacementLevel(scores);
   prof.mathCheckDone = true;
   prof.mathCheckScores = scores;
+  // The levels under where she landed are assumed, not taught: they are marked "placed",
+  // so the lesson never walks her through n+0 again, and they never count as known cold.
+  for (const key of E.placedBelowLevel(prof.mathLevel, MC)) {
+    if (!state.facts[key]) {
+      state.facts[key] = { status: "placed", lvl: 0, due: null, helps: 0, seen: 0, lastSeen: null, slow: false };
+    }
+  }
+  state.mathLesson = null;
   await save({ profile: true, facts: true }).catch(() => {});
 
   const level = MC.levelById(prof.mathLevel);

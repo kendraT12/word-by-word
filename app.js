@@ -444,7 +444,9 @@ async function boot() {
   // A slow host should not keep her waiting: pick the capabilities up when they arrive.
   if (!caps) {
     detecting.then(async (late) => {
-      if (!late || state.lesson) return;
+      // Nothing may replace her profile, words and facts while she is mid-lesson: the
+      // running lesson holds the old objects, and she would lose the work in hand.
+      if (!late || state.lesson || state.mathLesson) return;
       await applyCaps(late);
       openFirstScreen();
     }).catch(() => {});

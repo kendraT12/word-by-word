@@ -404,8 +404,8 @@ const factSlow = (lastSeen = "2026-11-25") => ({ status: "practicing", lvl: 0, d
 // A small ladder with exactly ten facts in its first level, so the 80% line is testable.
 const tinyMath = {
   LEVELS: [
-    { id: 1, name: "First ten", idea: "A level with ten facts in it.", families: [[1, 2], [3, 4]], drills: ["9+9", "18-9"] },
-    { id: 2, name: "Second", idea: "A level after the first one.", families: [[5, 5]], drills: [] },
+    { id: 1, name: "First ten", idea: "A level that teaches ten facts.", families: [[1, 2], [3, 4], [5, 5]], drills: ["9+9", "18-9"] },
+    { id: 2, name: "Second", idea: "A level after the first one.", families: [[6, 6]], drills: [] },
   ],
   familyOf: MC.familyOf,
   keysOfLevel: MC.keysOfLevel,
@@ -448,9 +448,12 @@ test("buildMathLesson: facts due for review are included", () => {
 test("buildMathLesson: nothing left in her level pulls unfinished families from the earlier ones", () => {
   const facts = {};
   for (const [a, b] of tinyMath.LEVELS[1].families) for (const k of MC.familyOf(a, b)) facts[k] = factLearned();
+  for (const k of MC.familyOf(5, 5)) facts[k] = factLearned();
   facts["1+2"] = factSlow("2026-11-20");
   const l = E.buildMathLesson({ profile: { mathLevel: 2 }, facts, content: tinyMath, today: "2026-11-26" });
-  eq(l.newFamilies, [[1, 2]]);
+  // The one she has touched leads; the one she never started comes with it, because
+  // a family nobody ever teaches her is a fact she never learns.
+  eq(l.newFamilies, [[1, 2], [3, 4]]);
 });
 
 // Review Focus 1 — the rule the whole app turns on. Both branches are "correct".
@@ -464,13 +467,18 @@ test("a fact answered correctly inside the bar is learned", () => {
 });
 
 test("canAdvanceLevel: 80% of the level's facts learned, and not before", () => {
-  const keys = MC.keysOfLevel(tinyMath.LEVELS[0]);
+  const keys = tinyMath.LEVELS[0].families.flatMap(([a, b]) => MC.familyOf(a, b));
   eq(keys.length, 10);
   const facts = {};
   keys.slice(0, 7).forEach((k) => (facts[k] = factLearned()));
   eq(E.canAdvanceLevel(1, facts, tinyMath), false);
   facts[keys[7]] = factLearned();
   eq(E.canAdvanceLevel(1, facts, tinyMath), true);
+});
+test("canAdvanceLevel: the facts a level only drills again do not hold her back", () => {
+  const facts = {};
+  tinyMath.LEVELS[0].families.flatMap(([a, b]) => MC.familyOf(a, b)).forEach((k) => (facts[k] = factLearned()));
+  eq(E.canAdvanceLevel(1, facts, tinyMath), true, "9+9 and 18-9 are never taught on this level");
 });
 test("canAdvanceLevel: there is nowhere to go from the last level", () => {
   const facts = {};
@@ -592,4 +600,70 @@ test("buildMathLesson: her very first lesson has no Fast Facts, because she has 
   const l = E.buildMathLesson({ profile: { mathLevel: 5 }, facts: {}, content: MC, today: "2026-11-26" });
   eq(l.warmup, []);
   eq(l.newFamilies.length, 2);
+});
+
+// ---- What the branch review found ----
+
+// A level is measured on the facts it TEACHES. Counting the facts it only drills again
+// made levels 3 and 7 unreachable for any child the check did not start at level 1:
+// the drills are earlier levels' facts, and an earlier fact she was never taught could
+// never become learned.
+test("levelProgress: a level is measured on its own facts, not the ones it drills again", () => {
+  const facts = {};
+  for (const [a, b] of MC.levelById(3).families) for (const k of MC.familyOf(a, b)) facts[k] = factLearned();
+  const got = E.levelProgress(3, facts, MC);
+  eq(got.total, 12);
+  eq(got.learned, 12);
+  eq(E.canAdvanceLevel(3, facts, MC), true);
+});
+test("canAdvanceLevel: a child who starts at level 3 is not held back by level 1's facts", () => {
+  const facts = {};
+  const fams = MC.levelById(3).families;
+  for (const [a, b] of fams.slice(0, 3)) for (const k of MC.familyOf(a, b)) facts[k] = factLearned();
+  eq(E.canAdvanceLevel(3, facts, MC), true);
+});
+test("levelProgress: a level that teaches nothing is measured on the facts she has met", () => {
+  const facts = { "11-2": factLearned(), "12-3": factLearned() };
+  const got = E.levelProgress(7, facts, MC);
+  eq(got.total, 2);
+  eq(got.learned, 2);
+  eq(E.canAdvanceLevel(7, facts, MC), true);
+  eq(E.canAdvanceLevel(7, {}, MC), false);
+});
+
+// Families left behind when she crossed the 80% line must come back, or "every fact to
+// 20" is not true. They are unstarted, so the old rule skipped them for good.
+test("buildMathLesson: a family left behind on an earlier level is picked up later", () => {
+  const facts = {};
+  for (const l of MC.LEVELS.slice(0, 2)) {
+    for (const [a, b] of l.families) for (const k of MC.familyOf(a, b)) facts[k] = factLearned();
+  }
+  for (const k of MC.familyOf(1, 9)) delete facts[k];
+  for (const [a, b] of MC.levelById(3).families) for (const k of MC.familyOf(a, b)) facts[k] = factLearned();
+  const l = E.buildMathLesson({ profile: { mathLevel: 3 }, facts, content: MC, today: "2026-11-26" });
+  eq(l.newFamilies, [[1, 9]]);
+});
+test("placedBelowLevel: the levels under where the check put her are assumed, not taught", () => {
+  const below = E.placedBelowLevel(3, MC);
+  ok(below.includes("5+5"), "a level 2 fact");
+  ok(below.includes("0+7"), "a level 1 fact");
+  ok(!below.includes("3+7"), "nothing from her own level");
+  const facts = {};
+  for (const k of below) facts[k] = { status: "placed", lvl: 0, due: null, helps: 0, seen: 0, lastSeen: null, slow: false };
+  const l = E.buildMathLesson({ profile: { mathLevel: 3 }, facts, content: MC, today: "2026-11-26" });
+  for (const fam of l.newFamilies) ok(MC.levelById(3).families.some((f) => f[0] === fam[0] && f[1] === fam[1]), String(fam));
+});
+
+// A step she needed help on is the strongest sign she is tiring. Scoring it as nothing
+// meant a fading child reported as steady.
+test("fadeNote: a step she needed help on counts as tiring, not as nothing", () => {
+  const bad = { mathMinutes: 18, mathTrace: ["ok", "ok", "ok", "slow", "help", "help"] };
+  const note = E.fadeNote({ "2026-11-20": bad, "2026-11-21": bad, "2026-11-22": bad, "2026-11-23": bad });
+  ok(typeof note === "string" && note.includes("12"), String(note));
+});
+
+// This one used to filter the days itself and never call practiceDays at all.
+test("streak: a maths day does not extend her reading run", () => {
+  eq(E.streak(["2026-11-24", "2026-11-26"], "2026-11-26"), 1);
+  eq(E.streak(["2026-11-25", "2026-11-26"], "2026-11-26"), 2);
 });

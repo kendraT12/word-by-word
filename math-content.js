@@ -60,12 +60,12 @@ const LADDER = [
   },
   {
     name: "Doubles",
-    idea: "Two the same is a double. 4 and 4 make 8.",
+    idea: "Two the same is a double. Doubles are the ones to know by heart.",
     claims: (a, b) => a === b,
   },
   {
     name: "Pairs that make ten",
-    idea: "These two make ten. 3 and 7 make 10.",
+    idea: "Two numbers that make ten. Learn them as pairs and you never have to count them.",
     claims: (a, b) => a + b === 10,
     // She met 1 and 9, 5 and 5, and 10 and nothing in the levels before. They belong
     // to this set too, so the set is practised whole.
@@ -73,7 +73,7 @@ const LADDER = [
   },
   {
     name: "Near doubles",
-    idea: "One more than a double. 6 and 7 is 6 and 6, then 1 more.",
+    idea: "One more than a double. Think of the double just under it, then one more.",
     claims: (a, b) => b === a + 1,
     drillsFrom: [[5, 5], [6, 6], [7, 7]],
   },
@@ -81,17 +81,17 @@ const LADDER = [
     // The level the first draft of the ladder left out: 2+6 and 3+5 are neither
     // doubles, near doubles, nor pairs that make ten, and she has to know them.
     name: "Count on two or three",
-    idea: "Start at the big one and count on. 2 and 6 is 6, then 7, 8.",
+    idea: "Start at the bigger number and count on from there.",
     claims: (a) => a === 2 || a === 3,
   },
   {
     name: "Bridging ten",
-    idea: "Make ten first. 8 and 5 is 8 and 2, then 3 more.",
+    idea: "Make ten first, then add on what is left over.",
     claims: (a, b) => a + b > 10,
   },
   {
     name: "Back from the teens",
-    idea: "Take away from a teen. 15 take away 7 is 8. Think: 7 and what make 15?",
+    idea: "Take away from a teen. Think: what goes with it to make the teen?",
     claims: null,
     // No new families: the hard half of what she already learned, on its own.
     drillsPick: (met) => met.filter((k) => {
@@ -192,9 +192,12 @@ export const WORD_PROBLEMS = {
 // ---------- The keypad ----------
 
 /** She has no submit button to find mid-drill: the answer settles on its own.
- *  How long to wait depends on whether another digit could still be coming. */
-export const SETTLE_MS = 1000;
-export const FINAL_MS = 250;
+ *
+ *  Nothing settles in under a second, which is what the design promised: a seven-year-old
+ *  who fat-fingers a 4 instead of a 7 has to be able to reach Back before the app calls
+ *  it a miss. A first digit that could still grow into a teen waits longer still. */
+export const SETTLE_MS = 1500;
+export const FINAL_MS = 1000;
 
 export function settleDelay(typed, answerMax = 20) {
   const s = String(typed === null || typed === undefined ? "" : typed);
@@ -228,6 +231,11 @@ function hardWords(text, words, content) {
  * one she can read. Skipping is the right answer then: the fact is taught on numerals
  * alone rather than hidden behind words she has not met.
  */
+/** "1 hats" is not something to put in front of a child learning to read. */
+function readable(text) {
+  return String(text).replace(/\b1 ([A-Za-z]+)s\b/g, "1 $1");
+}
+
 export function problemFor(levelId, key, { words = {}, content = null, elsewhere = true } = {}) {
   const parts = partsOf(key);
   if (!parts || !content) return null;
@@ -237,7 +245,7 @@ export function problemFor(levelId, key, { words = {}, content = null, elsewhere
   for (const id of ids) {
     for (const entry of WORD_PROBLEMS[id] || []) {
       if (entry.op !== parts.op) continue;
-      const text = entry.text.replaceAll("{a}", String(parts.a)).replaceAll("{b}", String(parts.b));
+      const text = readable(entry.text.replaceAll("{a}", String(parts.a)).replaceAll("{b}", String(parts.b)));
       if (hardWords(text, words, content).length === 0) return { text, key };
     }
   }

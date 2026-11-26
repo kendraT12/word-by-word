@@ -68,6 +68,7 @@ export function askFact(key, opts = {}) {
     let stuckId = 0;
     let offerHelp = false;
     let done = false;
+    let drawn = 0;
 
     const finish = (quality, answer) => {
       if (done) return;
@@ -85,12 +86,15 @@ export function askFact(key, opts = {}) {
     function draw(view = {}) {
       const { answerShown = false, message = "", controls = null } = view;
       const slot = answerShown ? String(want) : typed || " ";
+      // The bar drains once, on the first drawing. Every later drawing freezes it where
+      // the clock actually is, so redrawing the screen can never hand her the time back.
       let barNode = null;
       if (timed && !answerShown) {
-        barNode = startedMs === null
+        barNode = drawn === 0
           ? drainingBar(limitMs)
-          : bar(Math.max(0, 1 - startedMs / limitMs));
+          : bar(Math.max(0, 1 - (startedMs === null ? Date.now() - shownAt : startedMs) / limitMs));
       }
+      drawn++;
       stage([
         note ? p("small muted center", note) : null,
         sumEl(parts, slot),
@@ -137,6 +141,9 @@ export function askFact(key, opts = {}) {
       if (done || !typed) return;
       typed = typed.slice(0, -1);
       settleId++;
+      // Taking it all back takes the clock back too. Otherwise a tap, a Back, and a long
+      // think would be scored on the tap — a fact she worked out, saved as one she knew.
+      if (!typed) startedMs = null;
       draw();
       if (typed) armSettle();
     }
@@ -181,21 +188,6 @@ export function askFact(key, opts = {}) {
   });
 }
 
-/** A line of facts in a row, each one asked the same way. Used by Fast Facts and
- *  by the level's drills. Returns one result per fact, in order. */
-export async function askFacts(keys, opts = {}) {
-  const out = [];
-  for (let i = 0; i < keys.length; i++) {
-    const note = opts.note || (keys.length > 1 ? "Fast Facts — " + (i + 1) + " of " + keys.length : "");
-    let r;
-    try { r = await askFact(keys[i], { ...opts, note }); }
-    catch { r = { answer: null, correct: false, startedMs: 0, quality: "miss" }; }
-    out.push({ key: keys[i], ...r });
-    if (opts.onEach) await opts.onEach(out[out.length - 1], i);
-  }
-  return out;
-}
-
 // ---------- A new fact, in four steps ----------
 //
 // The same shape as a new word, for the same reason: she tries it, she sees the whole
@@ -226,7 +218,7 @@ async function stepTried(key, out) {
 
 /** Step 2. The whole family, one fact at a time, with what she has already got shown
  *  above it. Untimed: this is where the family is learned, not where it is raced. */
-async function stepFamily(keys) {
+async function stepFamily(keys, out) {
   let missed = false;
   for (let i = 1; i < keys.length; i++) {
     const done = keys.slice(0, i).map((k) => el("span", { class: "chip nums", text: factLine(k) }));
@@ -237,6 +229,7 @@ async function stepFamily(keys) {
     ]);
     await sleep(700);
     const r = await askFact(keys[i], { timed: false, note: "The same family" });
+    if (out) out[keys[i]] = r.correct ? "ok" : "miss";
     if (!r.correct) missed = true;
   }
   return missed ? "help" : "ok";
@@ -302,7 +295,8 @@ export async function runFact(fam, { levelId = 1, words = {}, content = null, id
   };
 
   await run("tried", () => stepTried(keys[0], result));
-  await run("family", () => stepFamily(keys));
+  result.familyBy = {};
+  await run("family", () => stepFamily(keys, result.familyBy));
   await run("why", () => stepWhy(fam, idea));
 
   const problem = MC.problemFor(levelId, keys[0], { words, content })

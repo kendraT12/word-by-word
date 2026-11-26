@@ -86,16 +86,16 @@ test("content: no emoji anywhere in the maths content", () => {
 
 // Review Focus 2 — she means 12 and has only tapped the 1.
 test("settleDelay: waits longer when another digit could still follow", () => {
-  ok(M.settleDelay("1") >= 1000, "1 could become 10 to 19");
-  eq(M.settleDelay("2"), 1000, "2 could become 20");
-  ok(M.settleDelay("3") < 1000, "nothing above 20 starts with 3, so 3 is final");
-  ok(M.settleDelay("9") < 1000, "9 is final");
-  ok(M.settleDelay("12") < 1000, "two digits is always final");
-  ok(M.settleDelay("0") < 1000, "no answer starts with a nothing digit");
+  eq(M.settleDelay("1"), M.SETTLE_MS, "1 could become 10 to 19");
+  eq(M.settleDelay("2"), M.SETTLE_MS, "2 could become 20");
+  eq(M.settleDelay("3"), M.FINAL_MS, "nothing above 20 starts with 3, so 3 is final");
+  eq(M.settleDelay("9"), M.FINAL_MS, "9 is final");
+  eq(M.settleDelay("12"), M.FINAL_MS, "two digits is always final");
+  eq(M.settleDelay("0"), M.FINAL_MS, "no answer starts with a nothing digit");
 });
 test("settleDelay: a bigger answer changes which first digits can still grow", () => {
-  ok(M.settleDelay("3", 30) >= 1000, "with answers up to 30, a 3 could become 30");
-  ok(M.settleDelay("4", 30) < 1000);
+  eq(M.settleDelay("3", 30), M.SETTLE_MS, "with answers up to 30, a 3 could become 30");
+  eq(M.settleDelay("4", 30), M.FINAL_MS);
 });
 
 // ---- Word problems: she is never shown one she cannot read ----
@@ -174,4 +174,26 @@ test("checkFacts: two facts from each level the check can place her on, and no m
 test("checkFacts: never asks about a level it could not place her on", () => {
   const asked = checkFacts().map((g) => g.level);
   for (const id of asked) ok(id <= E2.MAX_PLACEMENT_LEVEL, "level " + id);
+});
+
+// ---- What the branch review found ----
+
+// A level's idea was printed before she answered: "These two make ten. 3 and 7 make 10."
+// followed by "3 + 7 = ?" is not her knowing the fact, it is her reading it off the
+// screen — and it was then saved as learned. No idea may carry a worked example.
+test("ladder: no level's idea contains a number, so none of them can give an answer away", () => {
+  for (const l of M.LEVELS) ok(!/\d/.test(l.idea), "level " + l.id + ": " + l.idea);
+});
+
+test("settleDelay: nothing settles in under a second, so she can always reach Back", () => {
+  ok(M.settleDelay("7") >= 1000, "a lone 7 still waits");
+  ok(M.settleDelay("12") >= 1000, "two digits still wait");
+  ok(M.settleDelay("1") > M.settleDelay("7"), "a 1 could still become 12, so it waits longer");
+  ok(M.settleDelay("2") > M.settleDelay("9"));
+});
+
+test("problemFor: one of a thing is not plural", () => {
+  const words = { the: learned(), cat: learned(), hat: learned() };
+  const got = M.problemFor(1, "1+1", { words, content: C });
+  ok(got && got.text === "The cat had 1 hat. Mom got him 1 hat.", got && got.text);
 });
