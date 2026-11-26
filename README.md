@@ -1,8 +1,9 @@
 # Word by Word
 
-Reading and spelling practice for one first grader. Built for a 7-year-old who knows her
-letter sounds but spells every word out before she can say it, so the whole app is pointed
-at one thing: reading a word **whole** instead of working it out.
+Reading, spelling and maths practice for one first grader. Built for a 7-year-old who knows
+her letter sounds but spells every word out before she can say it, and who counts on her
+fingers before she can answer. The whole app is pointed at one thing: knowing something
+**whole** instead of working it out.
 
 ## Putting it on an iPad
 
@@ -15,7 +16,11 @@ never uploaded anywhere.
 
 ## How it works
 
-**She always tries first.** The app never says a word before she has had a go at it.
+**Two doors.** The home screen offers **Reading** and **Maths**. She picks. Separate
+streaks, separate progress, twenty minutes each.
+
+**She always tries first.** The app never says a word or an answer before she has had a go
+at it.
 
 **No pictures, anywhere.** No images, emoji or colour swatches, in the lessons, the answers
 or the rewards — a picture lets a child guess instead of read. Every answer choice is words
@@ -44,6 +49,37 @@ just a word she can read but *the first month of the year*. There are 60 built-i
 six per step, and every word in every one of them is a word she has already been taught —
 no story ever asks her to guess.
 
+### Maths: Fast Facts
+
+The same idea in different clothes. A right answer she counted out on her fingers is not
+the same as one she knew, and only the second one counts.
+
+**Fast Facts** works like Fast Words: a sum appears, a bar drains, she taps the answer on a
+number pad. **The bar stops the moment she taps her first digit**, not when she finishes —
+recall is when she knows it, and tapping 1 then 7 is her finger moving. There is no submit
+button to find mid-drill: the answer settles on its own, after longer when another digit
+could still be coming, so meaning 12 and having tapped only the 1 is never marked wrong.
+
+**Every new fact is a family**, so subtraction is never a separate pile:
+
+```
+3 + 4 = 7      4 + 3 = 7      7 − 3 = 4      7 − 4 = 3
+```
+
+A new family goes through four steps: try it, fill in the rest of the family, read one line
+on why it works, then use it in a short problem in words. **Every word in that problem is
+one the reading side has already taught her** — when none of them is readable yet, the step
+is skipped rather than shown.
+
+**Eight levels**, in the order a child actually builds recall: plus nothing and plus one,
+doubles, pairs that make ten, near doubles, counting on two or three, bridging ten, back
+from the teens, then all of it mixed. 66 fact families, every fact to 20, each taught once.
+A short first-day check of ten sums finds where to start her; it can never place her past
+level 5, because the levels above that are earned by answering.
+
+**No dots, no counters, no pictures.** Seven dots are seven things to count, and counting is
+the habit being broken. Numerals only.
+
 On top of those there are 15 everyday stories — the colors, the numbers one to twenty, the
 days, all twelve months and the four seasons, met again in a sentence instead of only in
 their own lesson. One comes every other day, and only once she knows the everyday words
@@ -54,7 +90,13 @@ inside it.
 Behind a 4-digit code: her streak and minutes, how many words she reads whole versus still
 sounds out, which words trip her up, her reading speed over time, a checklist of colours,
 days and months, how she did on her first-day check, and one line on what to practise
-tonight. There is a button to text yourself a summary — nothing is uploaded.
+tonight. The maths side shows the same things: facts she knows cold against facts she still
+works out, her level, the ones that trip her up, and whether her time to answer is falling.
+
+If she does well for the first few minutes of a sitting and then tails off, the app says so
+in plain words and leaves the decision to you. It never shortens her lesson by itself.
+
+There is a button to text yourself a summary — nothing is uploaded.
 
 **Listening is off by default.** A child on her own is never asked for the microphone. A
 grown-up can turn it on in the parent corner; then she reads words out loud and the app
@@ -81,6 +123,9 @@ Then open `http://localhost:8777/`.
 | `platform.js` | Voice, listening, saving and AI — the only file that touches anything outside |
 | `word.js` | The four steps, Fast Words and Slide & Say |
 | `lesson.js` | The daily lesson, story time, word collection, first-day check |
+| `math-content.js` | The fact ladder, the word problems, and the rules for both |
+| `math.js` | The number pad, Fast Facts, and a new fact's four steps |
+| `math-lesson.js` | The daily maths lesson and the first-day maths check |
 | `app.js` | Start-up, her home screen, setup, the grown-up corner |
 
 The logic is covered by tests that run on the JavaScript engine built into macOS, with
