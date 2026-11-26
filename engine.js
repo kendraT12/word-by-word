@@ -403,3 +403,132 @@ export function progressSummary({ profile, words, days, content, today }) {
   if (tip) lines.push(tip);
   return lines.join("\n");
 }
+
+// ---------- Maths: scheduling facts, and building a maths lesson ----------
+//
+// A fact keys as "3+4" or "7-3", so everything above — applyFast, applyReview,
+// dueReviews, slowWords, fluencyCounts — stores facts beside words untouched.
+// `content` here is the maths content module: LEVELS, familyOf, keysOfLevel, levelById.
+
+export const FAMILIES_PER_LESSON = 2;
+export const FAST_FACTS_SIZE = 8;
+
+/** The furthest the first-day maths check may place her. Levels past this one are earned
+ *  by answering, never handed out for a good showing on the easy facts. */
+export const MAX_PLACEMENT_LEVEL = 5;
+
+export function mathPlacementLevel(levelScores, top = MAX_PLACEMENT_LEVEL) {
+  const cap = Math.min(top, MAX_PLACEMENT_LEVEL);
+  const ids = Object.keys(levelScores).map(Number).sort((a, b) => a - b);
+  for (const id of ids) if (levelScores[id].filter((x) => !x).length >= 2) return Math.min(id, cap);
+  return cap;
+}
+
+const famKeys = (fam, content) => content.familyOf(fam[0], fam[1]);
+const sameFam = (a, b) => a[0] === b[0] && a[1] === b[1];
+
+/** A family still worth teaching: some fact in it is new, or she missed it.
+ *  A fact she can work out but works out slowly is not here — that needs Fast Facts. */
+function familyOpen(fam, facts, content) {
+  return famKeys(fam, content).some((k) => isOpen(facts, k));
+}
+function familyStarted(fam, facts, content) {
+  return famKeys(fam, content).some((k) => facts[k] && facts[k].status !== "new");
+}
+function familyLastSeen(fam, facts, content) {
+  let last = "";
+  for (const k of famKeys(fam, content)) {
+    const s = facts[k];
+    if (s && s.lastSeen && s.lastSeen > last) last = s.lastSeen;
+  }
+  return last;
+}
+
+/** Families to teach: ones she has started, longest untouched first, then unseen ones. */
+function nextFamilies(families, facts, content, n) {
+  const open = families.filter((f) => familyOpen(f, facts, content));
+  const started = open
+    .filter((f) => familyStarted(f, facts, content))
+    .sort((a, b) => (familyLastSeen(a, facts, content) < familyLastSeen(b, facts, content) ? -1 : 1));
+  const fresh = open.filter((f) => !familyStarted(f, facts, content));
+  return started.concat(fresh).slice(0, n);
+}
+
+export function buildMathLesson({ profile, facts, content, today }) {
+  const levelId = Math.min(Math.max(1, profile.mathLevel || 1), content.LEVELS.length);
+  const level = content.levelById(levelId);
+
+  let newFamilies = nextFamilies(level.families, facts, content, FAMILIES_PER_LESSON);
+  if (newFamilies.length < FAMILIES_PER_LESSON) {
+    const earlier = content.LEVELS.slice(0, levelId - 1)
+      .flatMap((l) => l.families)
+      .filter((f) => familyStarted(f, facts, content) && !newFamilies.some((g) => sameFam(g, f)));
+    newFamilies = newFamilies.concat(
+      nextFamilies(earlier, facts, content, FAMILIES_PER_LESSON - newFamilies.length)
+    );
+  }
+
+  const reviews = dueReviews(facts, today);
+  const busy = new Set(newFamilies.flatMap((f) => famKeys(f, content)).concat(reviews));
+
+  // Fast Facts: the ones she can work out lead, because speed is all they need.
+  const warmup = slowWords(facts).filter((k) => !busy.has(k)).slice(0, FAST_FACTS_SIZE);
+  const known = Object.keys(facts)
+    .filter((k) => facts[k].status === "learned" && !busy.has(k) && !warmup.includes(k))
+    .sort((a, b) => ((facts[a].lastSeen || "") > (facts[b].lastSeen || "") ? -1 : 1));
+  for (const k of known) { if (warmup.length >= FAST_FACTS_SIZE) break; warmup.push(k); }
+  for (const k of content.keysOfLevel(level)) {
+    if (warmup.length >= FAST_FACTS_SIZE) break;
+    if (!warmup.includes(k) && !busy.has(k)) warmup.push(k);
+  }
+
+  return { level: levelId, warmup, newFamilies, reviews };
+}
+
+export function levelProgress(levelId, facts, content) {
+  const keys = content.keysOfLevel(content.levelById(levelId));
+  const learned = keys.filter((k) => statusOf(facts, k) === "learned").length;
+  return { learned, total: keys.length, pct: keys.length ? learned / keys.length : 0 };
+}
+
+export function canAdvanceLevel(levelId, facts, content) {
+  if (levelId >= content.LEVELS.length) return false;
+  return levelProgress(levelId, facts, content).pct >= 0.8;
+}
+
+/** Facts she gets wrong most often, worst first — what to practise tonight. */
+export function hardestFacts(facts, n = 5) {
+  return Object.keys(facts)
+    .filter((k) => (facts[k].helps || 0) > 0 && facts[k].status !== "learned")
+    .sort((a, b) => (facts[b].helps - facts[a].helps) || (a < b ? -1 : 1))
+    .slice(0, n);
+}
+
+const FADE_SCORE = { ok: 0, slow: 1, miss: 2 };
+
+/** Does she tail off within a sitting? Compares the last third of each session against
+ *  its first third. This reports what it sees; it never shortens the lesson by itself. */
+export function fadeNote(days, lookback = 5, needed = 4) {
+  const usable = Object.keys(days)
+    .sort()
+    .filter((d) => (days[d].mathTrace || []).length >= 6)
+    .slice(-lookback);
+  if (usable.length < needed) return null;
+
+  const mean = (list) => list.reduce((s, q) => s + (FADE_SCORE[q] || 0), 0) / list.length;
+  const fadeMinutes = [];
+  for (const d of usable) {
+    const t = days[d].mathTrace;
+    const third = Math.floor(t.length / 3);
+    if (mean(t.slice(-third)) > mean(t.slice(0, third))) {
+      fadeMinutes.push((days[d].mathMinutes || 0) * ((t.length - third) / t.length));
+    }
+  }
+  if (fadeMinutes.length < needed) return null;
+
+  fadeMinutes.sort((a, b) => a - b);
+  const mins = Math.round(fadeMinutes[Math.floor(fadeMinutes.length / 2)]);
+  if (!(mins > 0)) return null;
+  return "She does well for about " + mins + " minutes, then it gets hard."
+    + " A shorter sitting may teach her more.";
+}

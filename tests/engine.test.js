@@ -394,3 +394,123 @@ test("applyRoutine: a maths step she needed help on counts as a help", () => {
   const s = E.applyRoutine(null, { tried: "ok", family: "help", why: "ok", problem: "ok" }, "2026-11-26", MSTEPS, "tried");
   eq(s.status, "practicing"); eq(s.helps, 1); eq(s.slow, false);
 });
+
+// ---- Maths, Task 3: scheduling facts and building a maths lesson ----
+import * as MC from "../math-content.js";
+
+const factLearned = (due = "2026-12-01") => ({ status: "learned", lvl: 1, due, helps: 0, seen: 1, lastSeen: "2026-11-20", slow: false });
+const factSlow = (lastSeen = "2026-11-25") => ({ status: "practicing", lvl: 0, due: "2026-11-26", helps: 0, seen: 1, lastSeen, slow: true });
+
+// A small ladder with exactly ten facts in its first level, so the 80% line is testable.
+const tinyMath = {
+  LEVELS: [
+    { id: 1, name: "First ten", idea: "A level with ten facts in it.", families: [[1, 2], [3, 4]], drills: ["9+9", "18-9"] },
+    { id: 2, name: "Second", idea: "A level after the first one.", families: [[5, 5]], drills: [] },
+  ],
+  familyOf: MC.familyOf,
+  keysOfLevel: MC.keysOfLevel,
+  levelById: (id) => tinyMath.LEVELS[Math.min(Math.max(1, id), 2) - 1],
+};
+
+test("buildMathLesson: a fresh learner gets her level and two new families", () => {
+  const l = E.buildMathLesson({ profile: { mathLevel: 1 }, facts: {}, content: MC, today: "2026-11-26" });
+  eq(l.level, 1);
+  eq(l.newFamilies.length, E.FAMILIES_PER_LESSON);
+  eq(l.newFamilies, [[0, 0], [0, 1]]);
+  eq(l.reviews, []);
+});
+test("buildMathLesson: a family she is part way through comes before an unseen one", () => {
+  const facts = { "0+3": factSlow("2026-11-20"), "3+0": { ...factSlow("2026-11-20"), slow: false } };
+  const l = E.buildMathLesson({ profile: { mathLevel: 1 }, facts, content: MC, today: "2026-11-26" });
+  eq(l.newFamilies[0], [0, 3]);
+});
+test("buildMathLesson: facts she worked out come back as Fast Facts warmup", () => {
+  // Both families are finished apart from her speed, so the lesson teaches neither
+  // again: a fact she can work out needs practice, not another explanation.
+  const facts = {
+    "7+7": factSlow("2026-11-24"), "14-7": factLearned(),
+    "6+6": factSlow("2026-11-25"), "12-6": factLearned(),
+  };
+  const l = E.buildMathLesson({ profile: { mathLevel: 2 }, facts, content: MC, today: "2026-11-26" });
+  eq(l.warmup.slice(0, 2), ["7+7", "6+6"]);
+});
+test("buildMathLesson: warmup never grows past the Fast Facts size", () => {
+  const facts = {};
+  for (let i = 0; i <= 10; i++) facts["0+" + i] = factSlow("2026-11-2" + (i % 10));
+  const l = E.buildMathLesson({ profile: { mathLevel: 1 }, facts, content: MC, today: "2026-11-26" });
+  eq(l.warmup.length, E.FAST_FACTS_SIZE);
+});
+test("buildMathLesson: facts due for review are included", () => {
+  const facts = { "4+4": factLearned("2026-11-25"), "8-4": factLearned("2026-12-20") };
+  const l = E.buildMathLesson({ profile: { mathLevel: 2 }, facts, content: MC, today: "2026-11-26" });
+  eq(l.reviews, ["4+4"]);
+});
+test("buildMathLesson: nothing left in her level pulls unfinished families from the earlier ones", () => {
+  const facts = {};
+  for (const [a, b] of tinyMath.LEVELS[1].families) for (const k of MC.familyOf(a, b)) facts[k] = factLearned();
+  facts["1+2"] = factSlow("2026-11-20");
+  const l = E.buildMathLesson({ profile: { mathLevel: 2 }, facts, content: tinyMath, today: "2026-11-26" });
+  eq(l.newFamilies, [[1, 2]]);
+});
+
+// Review Focus 1 — the rule the whole app turns on. Both branches are "correct".
+test("a fact answered correctly but too slowly is not learned", () => {
+  const s = E.applyFast(null, "slow", "2026-11-26");
+  eq(s.status, "practicing"); eq(s.slow, true); eq(s.due, "2026-11-27");
+});
+test("a fact answered correctly inside the bar is learned", () => {
+  const s = E.applyFast(null, "ok", "2026-11-26");
+  eq(s.status, "learned"); eq(s.slow, false);
+});
+
+test("canAdvanceLevel: 80% of the level's facts learned, and not before", () => {
+  const keys = MC.keysOfLevel(tinyMath.LEVELS[0]);
+  eq(keys.length, 10);
+  const facts = {};
+  keys.slice(0, 7).forEach((k) => (facts[k] = factLearned()));
+  eq(E.canAdvanceLevel(1, facts, tinyMath), false);
+  facts[keys[7]] = factLearned();
+  eq(E.canAdvanceLevel(1, facts, tinyMath), true);
+});
+test("canAdvanceLevel: there is nowhere to go from the last level", () => {
+  const facts = {};
+  MC.keysOfLevel(tinyMath.LEVELS[1]).forEach((k) => (facts[k] = factLearned()));
+  eq(E.canAdvanceLevel(2, facts, tinyMath), false);
+});
+
+// Review Focus 5 — the mistake already found and fixed on the reading side.
+test("mathPlacementLevel: a perfect showing still starts her at level 5, not the top", () => {
+  const perfect = {};
+  for (let i = 1; i <= 8; i++) perfect[i] = [true, true];
+  eq(E.mathPlacementLevel(perfect, 8), E.MAX_PLACEMENT_LEVEL);
+  eq(E.MAX_PLACEMENT_LEVEL, 5);
+});
+test("mathPlacementLevel: two missed inside a level starts her there", () => {
+  eq(E.mathPlacementLevel({ 1: [true, true], 2: [false, false], 3: [true, true] }), 2);
+});
+
+test("fadeNote: nothing to say until there are four sessions to compare", () => {
+  const bad = { mathMinutes: 18, mathTrace: ["ok", "ok", "ok", "slow", "miss", "miss"] };
+  eq(E.fadeNote({ "2026-11-23": bad }), null);
+  eq(E.fadeNote({ "2026-11-21": bad, "2026-11-22": bad, "2026-11-23": bad }), null);
+});
+test("fadeNote: says so when the last third of a session is consistently worse", () => {
+  const bad = { mathMinutes: 18, mathTrace: ["ok", "ok", "ok", "slow", "miss", "miss"] };
+  const note = E.fadeNote({ "2026-11-20": bad, "2026-11-21": bad, "2026-11-22": bad, "2026-11-23": bad });
+  ok(typeof note === "string" && note.includes("12"), note);
+});
+test("fadeNote: an even session says nothing", () => {
+  const even = { mathMinutes: 18, mathTrace: ["ok", "slow", "ok", "ok", "slow", "ok"] };
+  const days = {};
+  for (let i = 20; i <= 25; i++) days["2026-11-" + i] = even;
+  eq(E.fadeNote(days), null);
+});
+test("hardestFacts: the ones she needs help with most, worst first", () => {
+  const facts = {
+    "8+5": { status: "practicing", helps: 3, slow: false },
+    "7+6": { status: "practicing", helps: 1, slow: false },
+    "4+4": { status: "learned", helps: 9, slow: false },
+    "2+2": { status: "practicing", helps: 0, slow: true },
+  };
+  eq(E.hardestFacts(facts, 5), ["8+5", "7+6"]);
+});
