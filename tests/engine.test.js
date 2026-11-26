@@ -194,6 +194,15 @@ test("isStuck: 15 practice days on the same step", () => {
 test("placementStep: first step with two or more misses", () => {
   eq(E.placementStep({ 1: [true, true, true, true], 2: [true, false, true, false], 3: [false, false, false, false] }), 2);
 });
+test("placementStep: the first-day check never places her past the 2nd-grade ladder", () => {
+  // Steps past 10 are earned, never handed out by a letter-sound check: a 7-year-old
+  // who makes no mistakes on letter sounds still cannot read contractions.
+  const perfect = {};
+  for (let i = 1; i <= 14; i++) perfect[i] = [true, true, true, true];
+  eq(E.placementStep(perfect, 14), E.MAX_PLACEMENT_STEP);
+  eq(E.MAX_PLACEMENT_STEP, 10);
+  eq(E.placementStep(perfect, 4), 4, "fewer steps than the cap");
+});
 test("placementStep: no misses anywhere means the top step", () => {
   eq(E.placementStep({ 1: [true, true, true, true], 2: [true, true, false, true] }, 10), 10);
 });

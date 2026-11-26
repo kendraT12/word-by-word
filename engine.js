@@ -269,10 +269,16 @@ export function isStuck(profile, dayKeys) {
 }
 
 /** Starting step from the first-day check: the first step where she missed 2 or more words. */
-export function placementStep(stepScores, top = 10) {
+/** The furthest the first-day check may place her. Steps past this one are earned by
+ *  reading, never handed out for knowing letter sounds: a child can know every sound
+ *  and still not read a contraction. */
+export const MAX_PLACEMENT_STEP = 10;
+
+export function placementStep(stepScores, top = MAX_PLACEMENT_STEP) {
+  const cap = Math.min(top, MAX_PLACEMENT_STEP);
   const ids = Object.keys(stepScores).map(Number).sort((a, b) => a - b);
-  for (const id of ids) if (stepScores[id].filter((x) => !x).length >= 2) return id;
-  return top;
+  for (const id of ids) if (stepScores[id].filter((x) => !x).length >= 2) return Math.min(id, cap);
+  return cap;
 }
 
 // ---------- Parent insights ----------

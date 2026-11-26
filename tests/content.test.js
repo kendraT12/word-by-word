@@ -8,8 +8,8 @@ const everyStory = () => C.STEPS.flatMap((s) => S.STORIES[s.id])
   .concat(Object.keys(S.EVERYDAY_STORIES).flatMap((c) => S.EVERYDAY_STORIES[c]));
 const everyday = (cat) => C.EVERYDAY.filter((e) => e.cat === cat).map((e) => e.w);
 
-test("content: 10 steps with at least 12 words each, ids 1..10", () => {
-  eq(C.STEPS.length, 10);
+test("content: 14 steps with at least 12 words each, ids 1..14", () => {
+  eq(C.STEPS.length, 14);
   C.STEPS.forEach((s, i) => { eq(s.id, i + 1); ok(s.words.length >= 12, "step " + s.id + " has " + s.words.length); });
 });
 test("content: every word has an example sentence, and a meaning or a fill-in", () => {

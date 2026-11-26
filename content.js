@@ -333,6 +333,114 @@ export const STEPS = [
       D("together", "with each other", "We play together."),
     ]],
   ]),
+
+  step(11, "Letters you do not say", {
+    kn: team("k and n", "make just the n sound. The k stays quiet: knee, knife, knock."),
+    wr: team("w and r", "make just the r sound. The w stays quiet: write, wrong, wrap."),
+    mb: "At the end of a word, mb makes just the m sound. The b stays quiet: lamb, thumb, climb.",
+  }, [
+    ["kn", [
+      T("knee", "the bend in the middle of your leg", "I fell and hurt my knee."),
+      T("knife", "a sharp tool for cutting food", "Dad cuts with a knife."),
+      A("knock", "to hit a door so people know you are there", "Knock on the door."),
+      T("knot", "a tight twist you tie in a rope", "I tied a knot in the rope."),
+    ]],
+    ["wr", [
+      A("write", "to put words on paper", "I write my name."),
+      D("wrong", "not right", "That answer is wrong."),
+      A("wrap", "to put paper all the way around something", "We wrap the gift."),
+      T("wrist", "the thin part between your hand and your arm", "My wrist is small."),
+    ]],
+    ["mb", [
+      T("lamb", "a baby sheep", "The lamb stays by its mother."),
+      T("thumb", "the short fat finger on your hand", "I have one thumb."),
+      A("climb", "to go up something using your hands and feet", "I can climb the tree."),
+      T("crumb", "a tiny bit of bread that falls off", "A crumb fell on the floor."),
+    ]],
+  ]),
+
+  step(12, "When c and g go soft", {
+    ce: "Before e, i, or y, the letter c says s instead of k. Listen: city, face, ice.",
+    ge: "Before e, i, or y, the letter g says j instead of g. Listen: gentle, page, giant.",
+    dge: team("d, g, and e", "say j at the end of a word: bridge, edge."),
+  }, [
+    ["ce", [
+      T("city", "a very big town", "A city has many people."),
+      T("circle", "a round shape with no corners", "I drew a circle."),
+      A("dance", "to move your body to music", "We dance together."),
+      T("face", "the front of your head", "A smile is on her face."),
+      T("race", "a game to see who is fastest", "I won the race."),
+      T("ice", "water that has gone hard and cold", "The ice is cold.", { art: "" }),
+    ]],
+    ["ge", [
+      D("gentle", "soft and careful, not rough", "Be gentle with the lamb."),
+      T("giant", "someone or something much bigger than normal", "The tree is a giant."),
+      T("page", "one sheet in a book", "I read one page."),
+      T("cage", "a box with bars that holds an animal", "The rabbit is in the cage."),
+      D("large", "very big", "That is a large box."),
+    ]],
+    ["dge", [
+      T("bridge", "a road built over water", "We drove over the bridge."),
+      T("edge", "the line where something ends", "Do not stand on the edge."),
+    ]],
+  ]),
+
+  step(13, "Word parts that change the meaning", {
+    un: "The part un at the front of a word means not, or the opposite. Happy becomes unhappy.",
+    re: "The part re at the front of a word means do it again. Tell becomes retell.",
+    ful: "The part ful at the end of a word means full of it. Care becomes careful.",
+    ly: "The part ly at the end of a word tells you how something is done. Slow becomes slowly.",
+    ness: "The part ness at the end of a word turns it into a thing. Kind becomes kindness.",
+  }, [
+    ["un", [
+      D("unhappy", "not happy", "She is unhappy about the rain."),
+      A("unlock", "to open a lock", "I unlock the door."),
+      A("undo", "to take something back to how it was", "Can you undo the knot?"),
+    ]],
+    ["re", [
+      A("retell", "to tell it again", "I retell the story to Mom."),
+      A("repaint", "to paint it again", "We repaint the old door."),
+    ]],
+    ["ful", [
+      D("careful", "doing something slowly so nothing goes wrong", "Be careful with the knife."),
+      D("helpful", "glad to help other people", "My friend is helpful."),
+      D("playful", "liking to play", "The playful rabbit hops."),
+    ]],
+    ["ly", [
+      D("slowly", "in a slow way", "The boat moves slowly."),
+      D("quickly", "in a fast way", "She ran quickly to school."),
+      D("softly", "in a quiet, gentle way", "He spoke softly to the lamb."),
+    ]],
+    ["ness", [
+      T("kindness", "being kind to other people", "Her kindness made me happy."),
+      T("darkness", "when there is no light at all", "The darkness came at night."),
+    ]],
+  ]),
+
+  step(14, "Short ways to say two words, and long words", {
+    apos: "Two words can squeeze into one. The mark shows where the letters were taken out: "
+      + "do not becomes don't.",
+    parts: "A long word is just short parts stuck together. Say one part at a time: "
+      + "fan-tas-tic, re-mem-ber.",
+  }, [
+    ["apos", [
+      L("don't", "I ___ want to go to bed.", ["does", "down"], "I don't like the dark."),
+      L("can't", "The pig ___ climb a tree.", ["cat", "cane"], "I can't find my shoe."),
+      L("isn't", "The cake ___ for you.", ["is", "it"], "That isn't my hat."),
+      L("it's", "I know ___ cold out.", ["its", "it"], "It's time for bed."),
+      L("we'll", "Tomorrow ___ go to the park.", ["well", "will"], "We'll be there soon."),
+      L("I'm", "___ happy to see you.", ["am", "I"], "I'm reading a book."),
+      L("let's", "Come on, ___ go!", ["lets", "let"], "Let's read together."),
+    ]],
+    ["parts", [
+      D("fantastic", "really, really good", "Her reading is fantastic."),
+      A("remember", "to keep something in your head and not forget it", "I remember my birthday."),
+      D("important", "something that matters a lot", "Reading is important."),
+      D("wonderful", "so good it makes you happy", "That was a wonderful day."),
+      D("suddenly", "all at once, with no warning", "Suddenly the dog ran off."),
+      T("everyone", "every person", "Everyone is here.", { art: "" }),
+    ]],
+  ]),
 ];
 
 const sight = (list, entries) => entries.map((e) => ({ cat: null, ...e, step: 0, pat: null, list }));
@@ -486,7 +594,7 @@ export const HOMOPHONES = {
 /** Plain little words stories may use even though they are not taught as lessons. */
 export const HELPERS = ["a", "an", "i", "am", "at", "as", "be", "by", "do", "go", "if", "in", "it", "its",
   "me", "my", "no", "on", "or", "so", "up", "us", "we", "his", "him", "has", "had", "not", "but", "can",
-  "did", "get", "got", "let", "yes", "too", "off", "out", "now", "all", "oh", "mom", "dad", "then", "them",
+  "did", "get", "got", "let", "put", "yes", "too", "off", "out", "now", "all", "oh", "mom", "dad", "then", "them",
   "that", "will", "into", "sat", "ran", "fun", "lot", "like"];
 
 const start = (say, answer, a, b) => ({ say, where: "start", answer, choices: [answer, a, b] });

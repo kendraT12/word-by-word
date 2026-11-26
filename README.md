@@ -35,9 +35,10 @@ learned, and that step's story read with little help.
 
 ### What she learns
 
-Ten steps, from short vowels (`cat`, `sit`) through `sh`/`ch`/`th`, blends, magic e, vowel
-teams, `ar`/`or`/`er`, word endings and longer words, up to second-grade stories — 152 words
-in all, plus 40 common sight words and 57 everyday words: colours, numbers one to twenty,
+Fourteen steps, from short vowels (`cat`, `sit`) through `sh`/`ch`/`th`, blends, magic e, vowel
+teams, `ar`/`or`/`er`, word endings and longer words, up to second-grade stories, then silent letters (`knee`, `write`), soft c and g (`city`,
+`gentle`), prefixes and suffixes (`unhappy`, `careful`), and contractions and long words
+(`don't`, `remember`) — 203 words in all, plus 40 common sight words and 57 everyday words: colours, numbers one to twenty,
 days, months and seasons. Each everyday word teaches its meaning too, so `January` is not
 just a word she can read but *the first month of the year*. There are 60 built-in stories,
 six per step, and every word in every one of them is a word she has already been taught —
