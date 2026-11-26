@@ -514,3 +514,18 @@ test("hardestFacts: the ones she needs help with most, worst first", () => {
   };
   eq(E.hardestFacts(facts, 5), ["8+5", "7+6"]);
 });
+
+// ---- Maths, Task 6: the twenty-minute box ----
+// Review Focus 4 — a lesson must never cut her off part way through a fact.
+test("sessionOver: true only once the limit has passed, so the item in hand finishes", () => {
+  const t0 = 1000;
+  eq(E.sessionOver(t0, t0 + 19 * 60000), false);
+  eq(E.sessionOver(t0, t0 + 20 * 60000 - 1), false);
+  eq(E.sessionOver(t0, t0 + 20 * 60000), true);
+});
+test("sessionOver: the limit can be set, and a missing start never ends the lesson", () => {
+  eq(E.sessionOver(1000, 6000, 4000), true);
+  eq(E.sessionOver(1000, 4000, 4000), false);
+  eq(E.sessionOver(0, 99999999), false);
+  eq(E.sessionOver(null, 99999999), false);
+});

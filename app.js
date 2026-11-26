@@ -339,6 +339,7 @@ async function applyCaps(caps) {
   const loaded = await state.store.load();
   state.profile = loaded.profile || state.profile;
   state.words = Object.keys(loaded.words || {}).length ? loaded.words : state.words;
+  state.facts = Object.keys(loaded.facts || {}).length ? loaded.facts : state.facts;
   state.days = Object.keys(loaded.days || {}).length ? loaded.days : state.days;
   buildListener();
 }

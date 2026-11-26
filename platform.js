@@ -227,7 +227,7 @@ export function makeListener(caps, { speech } = {}) {
 
 // ---------- Saving her progress ----------
 
-const emptyLocal = () => ({ profile: null, words: {}, days: {} });
+const emptyLocal = () => ({ profile: null, words: {}, facts: {}, days: {} });
 
 /** Keeps her progress on the device always, and in her Claude account when it can. */
 export function makeStore(caps, uid, storage = (globalThis.localStorage || null)) {
@@ -258,6 +258,7 @@ export function makeStore(caps, uid, storage = (globalThis.localStorage || null)
 
   s.saveProfile = async (profile) => { const p = stamp(profile); writeLocal({ profile: p }); await dbSet("profile", p); };
   s.saveWords = async (words) => { const w = stamp(words); writeLocal({ words: w }); await dbSet("words", w); };
+  s.saveFacts = async (facts) => { const f = stamp(facts); writeLocal({ facts: f }); await dbSet("facts", f); };
   s.saveDay = async (dayKey, log) => {
     const entry = stamp(log);
     writeLocal({ days: { ...readLocal().days, [dayKey]: entry } });
@@ -266,11 +267,17 @@ export function makeStore(caps, uid, storage = (globalThis.localStorage || null)
 
   s.load = async () => {
     const local = readLocal();
-    const out = { profile: local.profile, words: { ...local.words }, days: { ...local.days } };
+    const out = {
+      profile: local.profile,
+      words: { ...local.words },
+      facts: { ...(local.facts || {}) },
+      days: { ...local.days },
+    };
     if (online) {
       try {
-        const [profileSnap, wordsSnap, all] = await Promise.all([
-          db.doc(base + "/profile").get(), db.doc(base + "/words").get(), db.collection(base).get(),
+        const [profileSnap, wordsSnap, factsSnap, all] = await Promise.all([
+          db.doc(base + "/profile").get(), db.doc(base + "/words").get(),
+          db.doc(base + "/facts").get(), db.collection(base).get(),
         ]);
         const remoteProfile = profileSnap && profileSnap.data ? profileSnap.data() : null;
         if (remoteProfile && (remoteProfile.updatedAt || 0) >= ((local.profile && local.profile.updatedAt) || 0)) {
@@ -278,6 +285,8 @@ export function makeStore(caps, uid, storage = (globalThis.localStorage || null)
         }
         const remoteWords = wordsSnap && wordsSnap.data ? wordsSnap.data() : null;
         if (remoteWords && (remoteWords.updatedAt || 0) >= (local.words.updatedAt || 0)) out.words = { ...remoteWords };
+        const remoteFacts = factsSnap && factsSnap.data ? factsSnap.data() : null;
+        if (remoteFacts && (remoteFacts.updatedAt || 0) >= ((local.facts || {}).updatedAt || 0)) out.facts = { ...remoteFacts };
         for (const doc of (all && all.docs) || []) {
           if (!String(doc.id).startsWith("day-")) continue;
           const key = String(doc.id).slice(4);
@@ -288,6 +297,7 @@ export function makeStore(caps, uid, storage = (globalThis.localStorage || null)
       } catch { s.mode = "device"; }
     }
     delete out.words.updatedAt;
+    delete out.facts.updatedAt;
     return out;
   };
   return s;

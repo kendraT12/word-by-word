@@ -160,3 +160,18 @@ test("problemFor: her own level's problem is preferred when she can read it", ()
   const got = M.problemFor(6, "9+4", { words, content: C });
   ok(got && got.text.includes("drums"), got && got.text);
 });
+
+// ---- The first-day check ----
+import { checkFacts } from "../math-lesson.js";
+import * as E2 from "../engine.js";
+
+test("checkFacts: two facts from each level the check can place her on, and no more", () => {
+  const groups = checkFacts();
+  eq(groups.map((g) => g.level), [1, 2, 3, 4, 5]);
+  eq(groups.reduce((n, g) => n + g.keys.length, 0), 10);
+  for (const g of groups) for (const k of g.keys) ok(M.partsOf(k) && M.partsOf(k).op === "+", k);
+});
+test("checkFacts: never asks about a level it could not place her on", () => {
+  const asked = checkFacts().map((g) => g.level);
+  for (const id of asked) ok(id <= E2.MAX_PLACEMENT_LEVEL, "level " + id);
+});

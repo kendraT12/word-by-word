@@ -532,3 +532,13 @@ export function fadeNote(days, lookback = 5, needed = 4) {
   return "She does well for about " + mins + " minutes, then it gets hard."
     + " A shorter sitting may teach her more.";
 }
+
+/** Twenty minutes is a time box, not a quota of work. The lesson asks this BETWEEN items
+ *  only: an item already in hand is always finished, so she is never cut off part way
+ *  through a fact. A session with no start time never ends itself. */
+export const SESSION_MS = 20 * 60000;
+
+export function sessionOver(startedAt, now, limitMs = SESSION_MS) {
+  if (!startedAt) return false;
+  return now - startedAt >= limitMs;
+}

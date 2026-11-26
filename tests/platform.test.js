@@ -143,6 +143,19 @@ test("store: the device copy wins when it is newer than the account", async () =
   const db = fakeDb({ docs: { "data/users/u1/profile": { name: "Stale", updatedAt: 2 } } });
   eq((await P.makeStore({ db }, "u1", storage).load()).profile.name, "Fresh");
 });
+test("store: her facts save and load back beside her words", async () => {
+  const storage = fakeStorage(), db = fakeDb();
+  const s = P.makeStore({ db }, "u1", storage);
+  await s.saveFacts({ "3+4": { status: "learned" } });
+  eq(db.writes[0].path, "data/users/u1/facts");
+  const got = await s.load();
+  eq(got.facts["3+4"].status, "learned");
+  eq(got.facts.updatedAt, undefined);
+});
+test("store: an account with no maths yet loads an empty set of facts", async () => {
+  const s = P.makeStore({}, null, fakeStorage());
+  eq((await s.load()).facts, {});
+});
 test("store: day logs load back by date", async () => {
   const storage = fakeStorage(), db = fakeDb();
   const s = P.makeStore({ db }, "u1", storage);
