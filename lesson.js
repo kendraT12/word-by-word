@@ -5,7 +5,7 @@ import * as C from "./content.js";
 import { STORIES, EVERYDAY_STORIES } from "./stories.js";
 import { state, today, show, screen, save, dayLog, practiceDays, say } from "./state.js";
 import { el, div, p, h, btn, card, mount, wordEl, bar, shuffle, sleep } from "./ui.js";
-import { runWord, setHeader, readAlong, FLUENT_MS } from "./word.js";
+import { runWord, setHeader, readAlong, fluentMs } from "./word.js";
 
 const withName = (s) => String(s).replaceAll("{name}", state.profile ? state.profile.name : "");
 const entryFor = (w) => C.STEPS.flatMap((s) => s.words).concat(C.SIGHT, C.EVERYDAY).find((e) => e.w === w) || null;
@@ -40,7 +40,10 @@ async function runLesson() {
   const step = () => { at++; setHeader("Word " + at + " of " + total); };
 
   const note = (result) => {
-    const steps = Object.values(result);
+    // Only the four steps count. A result also carries her reading time, which is a
+    // measurement, not a step.
+    if (result.sayMs > 0) log.wordMs.push(result.sayMs);
+    const steps = ["say", "spell", "mean", "story"].map((k) => result[k]).filter(Boolean);
     state.lesson.totalSteps += steps.length;
     state.lesson.okSteps += steps.filter((r) => r === "ok").length;
     if (steps.some((r) => r === "help")) state.lesson.helpedAnyStep = true;
@@ -331,7 +334,7 @@ function checkWord(word, grownup, label) {
       note ? p("center", note) : null,
       el("div", { class: "stack" }, controls),
     ])]);
-    const byClock = () => (Date.now() - startedAt > FLUENT_MS ? "slow" : "ok");
+    const byClock = () => (Date.now() - startedAt > fluentMs() ? "slow" : "ok");
 
     if (grownup) {
       frame("How did she read it?", [

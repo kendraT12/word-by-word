@@ -6,6 +6,8 @@ import * as C from "./content.js";
 import * as MC from "./math-content.js";
 import { state, today, show, screen, save, practiceDays, dayLog } from "./state.js";
 import { el, div, p, h, btn, card, field, mount, bar, wordEl, sleep } from "./ui.js";
+import { FLUENT_MS, fluentMs } from "./word.js";
+import { FACT_MS, factMs } from "./math.js";
 import "./word.js";
 import "./lesson.js";
 import "./math-lesson.js";
@@ -201,6 +203,80 @@ function shareProgressControls() {
   return div("stack", [box, buttons, said]);
 }
 
+// ---------- How long she gets ----------
+
+const SECONDS = [2.5, 3, 3.5, 4, 4.5, 5, 6];
+const asSeconds = (ms) => (Math.round(ms / 100) / 10).toFixed(1);
+
+/** Every time she has been clocked at, newest days last. */
+function timesFrom(field) {
+  const out = [];
+  for (const key of Object.keys(state.days).sort()) {
+    for (const ms of state.days[key][field] || []) out.push(ms);
+  }
+  return out;
+}
+
+/** One bar: what it is set to, what her own answers say it should be, and the choice.
+ *
+ *  Both numbers in this app were invented by someone who had never watched her read or
+ *  count. This is where they stop being invented: her times fall into two groups, and
+ *  the app says where the gap between them is and leaves the setting to a grown-up. */
+function barChooser({ title, field, nowMs, defaultMs, key, unit, help }) {
+  const prof = state.profile;
+  const times = timesFrom(field);
+  const found = E.suggestedBar(times);
+  const apply = (ms) => { prof[key] = ms; save({ profile: true }); show("parent"); };
+
+  return div("stack", [
+    div("spread", [
+      el("strong", { text: title }),
+      el("span", { class: "muted small nums", text: asSeconds(nowMs) + " seconds" + (prof[key] ? "" : " (the one it came with)") }),
+    ]),
+    p("tiny muted", help),
+    found
+      ? div("stack", [
+          p("small", "Her " + unit + " fall into two groups: the ones she knows come back in about "
+            + asSeconds(found.fast) + " seconds, and the ones she works out take about "
+            + asSeconds(found.slow) + ". The line between them is at about " + asSeconds(found.split) + "."),
+          p("tiny muted", "From " + found.n + " timed answers."),
+          found.split === nowMs ? null : btn("Set it to " + asSeconds(found.split) + " seconds", () => apply(found.split), "primary"),
+        ])
+      : p("small muted", times.length < E.MIN_TIMED
+          ? "Not enough yet. " + times.length + " timed " + (times.length === 1 ? "answer" : "answers") + " so far; this needs " + E.MIN_TIMED + "."
+          : "Her times do not fall into two groups yet, so there is no gap to put the bar in. That is normal early on, when she is working almost everything out."),
+    el("div", { class: "row" }, SECONDS.map((sec) =>
+      btn(asSeconds(sec * 1000), () => apply(sec * 1000), "small" + (Math.round(nowMs / 100) === Math.round(sec * 10) ? " picked" : "")))),
+    prof[key] ? btn("Back to " + asSeconds(defaultMs), () => apply(0), "quiet small") : null,
+  ]);
+}
+
+function timingCard() {
+  return card([
+    h(2, "How long she gets"),
+    p("tiny muted", "A word or a fact counts as hers only if she answers inside the bar. Too long and counting on her fingers passes as knowing, and she never practises it again. Too short and something she knows comes back for another turn, which costs her nothing."),
+    barChooser({
+      title: "Fast Words",
+      field: "wordMs",
+      nowMs: fluentMs(),
+      defaultMs: FLUENT_MS,
+      key: "wordMs",
+      unit: "reading times",
+      help: "From when the word appears to when she has said it.",
+    }),
+    div("divider"),
+    barChooser({
+      title: "Fast Facts",
+      field: "mathStartMs",
+      nowMs: factMs(),
+      defaultMs: FACT_MS,
+      key: "factMs",
+      unit: "answer times",
+      help: "From when the sum appears to her first tap on the pad — not to her finished answer.",
+    }),
+  ]);
+}
+
 screen("parent", () => {
   const prof = state.profile;
   const days = practiceDays().sort();
@@ -359,6 +435,8 @@ screen("parent", () => {
       h(2, "Words she has learned"),
       learnedWords.length ? div("chips", learnedWords.map((w) => el("span", { class: "chip", text: w }))) : p("muted", "None yet."),
     ]),
+
+    timingCard(),
 
     card([
       h(2, "Listening"),

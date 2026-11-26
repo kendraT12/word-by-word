@@ -609,3 +609,54 @@ export function factTip(facts) {
   const pretty = worst.replace("+", " + ").replace("-", " − ");
   return "Practice " + pretty + ": she needed help " + n + (n === 1 ? " time." : " times.");
 }
+
+// ---------- Setting the bar from what she actually does ----------
+
+/** Fewest answers worth drawing a conclusion from. */
+export const MIN_TIMED = 12;
+
+/**
+ * Where her own answers divide.
+ *
+ * A child answering a page of facts produces two clumps of times: the ones she knows,
+ * which come back in about the same short time every time, and the ones she works out,
+ * which take several times longer. The bar belongs in the gap between them.
+ *
+ * This finds the split that leaves both clumps tightest, and reports it — it never
+ * applies it. Both bars in this app were invented by someone who had never watched her;
+ * this is how they stop being invented.
+ *
+ * Returns null when there is nothing to say: too few answers, no real gap, or a gap that
+ * rests on one or two stray times.
+ */
+export function suggestedBar(times, { min = 2000, max = 8000, needed = MIN_TIMED, ratio = 1.6, side = 3 } = {}) {
+  const xs = (times || []).filter((t) => t > 0).sort((a, b) => a - b);
+  const n = xs.length;
+  if (n < needed || n < side * 2) return null;
+
+  // Running totals, so every candidate split is one subtraction rather than a loop.
+  const sum = [0], square = [0];
+  for (let i = 0; i < n; i++) { sum.push(sum[i] + xs[i]); square.push(square[i] + xs[i] * xs[i]); }
+  const spread = (a, b) => {
+    const k = b - a;
+    if (k <= 0) return 0;
+    const s = sum[b] - sum[a];
+    return square[b] - square[a] - (s * s) / k;
+  };
+
+  let best = null;
+  for (let i = side; i <= n - side; i++) {
+    const v = spread(0, i) + spread(i, n);
+    if (best === null || v < best.v) best = { v, i };
+  }
+  if (best === null) return null;
+
+  const lo = xs.slice(0, best.i), hi = xs.slice(best.i);
+  const middle = (list) => list[Math.floor(list.length / 2)];
+  const fast = middle(lo), slow = middle(hi);
+  // Two clumps only count as two if the slow one is clearly slower.
+  if (!(slow >= fast * ratio)) return null;
+
+  const gap = Math.round((lo[lo.length - 1] + hi[0]) / 2);
+  return { n, fast: Math.round(fast), slow: Math.round(slow), split: Math.max(min, Math.min(max, gap)) };
+}

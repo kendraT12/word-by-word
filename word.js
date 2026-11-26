@@ -23,10 +23,17 @@ const readable = (text) => E.offListWords(text, taughtSet()).length === 0;
 
 // ---------- Step 1: Say it ----------
 
-/** How long she may take and still have read the word whole, rather than worked it out. */
+/** How long she may take and still have read the word whole, rather than worked it out.
+ *  This was invented, not measured. A grown-up can set it in the parent corner, where the
+ *  app shows what her own two groups of times actually are. */
 export const FLUENT_MS = 3500;
 
-function stepSay(entry, pats, { fast = false } = {}) {
+export function fluentMs() {
+  const set = state.profile && state.profile.wordMs;
+  return set > 0 ? set : FLUENT_MS;
+}
+
+function stepSay(entry, pats, { fast = false } = {}, out = null) {
   return new Promise((resolve) => {
     let misses = 0, listenFails = 0, startedAt = 0, readMs = 0;
     const word = entry.w;
@@ -36,7 +43,7 @@ function stepSay(entry, pats, { fast = false } = {}) {
     const timerBar = () => {
       // The transition must already be in place before the width changes, or nothing animates.
       const fill = el("span", {
-        style: "display:block;height:100%;width:100%;background:var(--accent);transition:width " + FLUENT_MS + "ms linear",
+        style: "display:block;height:100%;width:100%;background:var(--accent);transition:width " + fluentMs() + "ms linear",
       });
       // width is explicit: inside a flex column, `margin: auto` alone collapses it to nothing.
       const outer = el("div", { class: "bar", style: "width:100%;max-width:220px;margin:0 auto;height:12px;background:var(--line)" }, [fill]);
@@ -59,8 +66,10 @@ function stepSay(entry, pats, { fast = false } = {}) {
     };
 
     const done = () => {
+      // Her time is kept whatever the outcome: it is what the bar gets set from later.
+      if (out && readMs > 0) out.sayMs = readMs;
       if (misses > 0) return resolve("help");
-      resolve(readMs > FLUENT_MS ? "slow" : "ok");
+      resolve(readMs > fluentMs() ? "slow" : "ok");
     };
 
     async function miss(heard) {
@@ -460,7 +469,7 @@ async function stepStory(entry) {
 export async function runWord(entry, { mode = "new", pats = [] } = {}) {
   const result = {};
   const run = async (name, fn) => { try { result[name] = await fn(); } catch { result[name] = "help"; } };
-  await run("say", () => stepSay(entry, pats, { fast: mode === "warmup" }));
+  await run("say", () => stepSay(entry, pats, { fast: mode === "warmup" }, result));
   if (mode === "warmup") return result;
   await run("spell", () => stepSpell(entry));
   if (mode === "review") return result;

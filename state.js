@@ -24,6 +24,7 @@ export function dayLog() {
   if (log.mathHelps === undefined) log.mathHelps = 0;
   if (!log.mathTrace) log.mathTrace = [];
   if (!log.mathStartMs) log.mathStartMs = [];
+  if (!log.wordMs) log.wordMs = [];
   return log;
 }
 

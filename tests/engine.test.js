@@ -667,3 +667,38 @@ test("streak: a maths day does not extend her reading run", () => {
   eq(E.streak(["2026-11-24", "2026-11-26"], "2026-11-26"), 1);
   eq(E.streak(["2026-11-25", "2026-11-26"], "2026-11-26"), 2);
 });
+
+// ---- Setting the bar from what she actually does ----
+//
+// Both bars — 3.5 seconds for a word, 5 for a fact — were invented. Her answers fall into
+// two groups, the ones she knew and the ones she worked out, and the gap between them is
+// where the bar belongs. This finds that gap so a grown-up can set it from evidence.
+test("suggestedBar: finds the gap between the ones she knew and the ones she worked out", () => {
+  const knew = [1200, 1400, 1300, 1500, 1100, 1350, 1250, 1450];
+  const workedOut = [5800, 6200, 6000, 7000, 5500, 6400];
+  const got = E.suggestedBar(knew.concat(workedOut));
+  eq(got.n, 14);
+  ok(got.fast > 1000 && got.fast < 1600, "fast group " + got.fast);
+  ok(got.slow > 5000, "slow group " + got.slow);
+  ok(got.split > 1500 && got.split < 5500, "split " + got.split);
+});
+test("suggestedBar: says nothing when she is evenly paced, because there is no gap", () => {
+  const even = [];
+  for (let i = 0; i < 24; i++) even.push(3000 + (i % 6) * 120);
+  eq(E.suggestedBar(even), null);
+});
+test("suggestedBar: says nothing until there are enough answers to see a pattern", () => {
+  eq(E.suggestedBar([1200, 1300, 6000, 6200]), null);
+  eq(E.suggestedBar([]), null);
+  eq(E.suggestedBar(null), null);
+});
+test("suggestedBar: one stray answer is not a group", () => {
+  const xs = [1200, 1250, 1300, 1350, 1400, 1450, 1500, 1550, 1600, 1650, 1700, 1750, 40000];
+  const got = E.suggestedBar(xs);
+  eq(got, null);
+});
+test("suggestedBar: never suggests a bar outside what a child can use", () => {
+  const silly = [100, 120, 110, 130, 105, 115].concat([30000, 31000, 32000, 30500, 33000, 31500]);
+  const got = E.suggestedBar(silly);
+  ok(got.split >= 2000 && got.split <= 8000, "split " + got.split);
+});

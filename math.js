@@ -2,14 +2,24 @@
 // She answers first. The app never shows or says an answer before she has had a go.
 
 import * as MC from "./math-content.js";
-import { say } from "./state.js";
+import { state, say } from "./state.js";
 import { el, p, btn, bar, sleep, tappableText } from "./ui.js";
 import { stage } from "./word.js";
 
 /** How long she may take to start answering and still have known the fact rather than
- *  worked it out. A guess, like Fast Words' 3.5 seconds, and the parent corner shows
- *  her real times so it can be set from what she actually does. */
-export const FACT_MS = 5000;
+ *  worked it out.
+ *
+ *  Four seconds, not five. The two mistakes are not equal: a bar that is too long files a
+ *  fact she counted out as one she knows, and she never practises it again; a bar that is
+ *  too short only sends a fact she knows back for another turn at Fast Facts. So it errs
+ *  short. It is still a reasoned guess and not a measurement — the parent corner shows
+ *  what her own times actually are, and a grown-up can set it from those. */
+export const FACT_MS = 4000;
+
+export function factMs() {
+  const set = state.profile && state.profile.factMs;
+  return set > 0 ? set : FACT_MS;
+}
 
 /** How long after the bar empties before a child sitting alone is offered a way out. */
 const STUCK_MS = 8000;
@@ -56,7 +66,7 @@ function drainingBar(ms) {
  * An untimed ask never returns "slow".
  */
 export function askFact(key, opts = {}) {
-  const { timed = true, limitMs = FACT_MS, feedback = true, note = "" } = opts;
+  const { timed = true, limitMs = factMs(), feedback = true, note = "" } = opts;
   const parts = MC.partsOf(key);
   const want = MC.answerOf(key);
 
