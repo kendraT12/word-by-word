@@ -9,7 +9,8 @@ import os, re, shutil, time, json
 HERE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = HERE  # the repo root is what GitHub Pages serves
 MODULES = ["app.js", "state.js", "ui.js", "word.js", "lesson.js",
-           "engine.js", "platform.js", "content.js", "stories.js"]
+           "engine.js", "platform.js", "content.js", "stories.js",
+           "math.js", "math-lesson.js", "math-content.js"]
 VERSION = time.strftime("%Y%m%d-%H%M%S")
 
 page = open(os.path.join(HERE, "tools", "page.html")).read()

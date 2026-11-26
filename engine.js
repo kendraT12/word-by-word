@@ -382,7 +382,7 @@ export function matchReadAlong(storyWords, heardTokens, homophones = {}) {
 }
 
 /** A short note a grown-up can send themselves: where she is, in plain words. */
-export function progressSummary({ profile, words, days, content, today }) {
+export function progressSummary({ profile, words, facts = {}, days, content, today }) {
   const practised = Object.keys(days).filter((k) => (days[k].practiced || []).length || days[k].minutes).sort();
   const { instant, slow } = fluencyCounts(words);
   const sounding = slowWords(words);
@@ -401,6 +401,22 @@ export function progressSummary({ profile, words, days, content, today }) {
   ];
   if (lastRead) lines.push("Story speed: " + days[lastRead].storyWpm[0] + " then " + days[lastRead].storyWpm[1] + " words a minute");
   if (tip) lines.push(tip);
+
+  // Her maths, when there is any. Same distinction as the reading: knowing is not working out.
+  if (Object.keys(facts).length) {
+    const f = fluencyCounts(facts);
+    const speed = answerSpeed(days);
+    lines.push("", "Maths — level " + (profile.mathLevel || 1));
+    lines.push("Knows cold: " + f.instant);
+    lines.push("Still counts: " + f.slow);
+    if (speed && speed.direction !== "new") {
+      lines.push("Time to answer: " + (speed.now / 1000).toFixed(1) + "s, was " + (speed.before / 1000).toFixed(1) + "s");
+    }
+    const mtip = factTip(facts);
+    if (mtip) lines.push(mtip);
+    const fade = fadeNote(days);
+    if (fade) lines.push(fade);
+  }
   return lines.join("\n");
 }
 
@@ -471,16 +487,16 @@ export function buildMathLesson({ profile, facts, content, today }) {
   const reviews = dueReviews(facts, today);
   const busy = new Set(newFamilies.flatMap((f) => famKeys(f, content)).concat(reviews));
 
-  // Fast Facts: the ones she can work out lead, because speed is all they need.
+  // Fast Facts: the ones she can work out lead, because speed is all they need, then
+  // the ones she knows, to keep them. Only facts she has MET go here. The reading side
+  // pads its warmup with untaught words, which works because the same words are then
+  // taught in the lesson; here the facts taught today are different ones, so padding
+  // would open her lesson with a run of facts she cannot do and is not about to learn.
   const warmup = slowWords(facts).filter((k) => !busy.has(k)).slice(0, FAST_FACTS_SIZE);
   const known = Object.keys(facts)
     .filter((k) => facts[k].status === "learned" && !busy.has(k) && !warmup.includes(k))
     .sort((a, b) => ((facts[a].lastSeen || "") > (facts[b].lastSeen || "") ? -1 : 1));
   for (const k of known) { if (warmup.length >= FAST_FACTS_SIZE) break; warmup.push(k); }
-  for (const k of content.keysOfLevel(level)) {
-    if (warmup.length >= FAST_FACTS_SIZE) break;
-    if (!warmup.includes(k) && !busy.has(k)) warmup.push(k);
-  }
 
   return { level: levelId, warmup, newFamilies, reviews };
 }
@@ -541,4 +557,28 @@ export const SESSION_MS = 20 * 60000;
 export function sessionOver(startedAt, now, limitMs = SESSION_MS) {
   if (!startedAt) return false;
   return now - startedAt >= limitMs;
+}
+
+/** Is she getting quicker to answer? Compares the middle time-to-start of her last few
+ *  maths days against the few before them. "new" means there is nothing to compare yet. */
+export function answerSpeed(days, span = 3) {
+  const keys = Object.keys(days).sort().filter((d) => (days[d].mathStartMs || []).length);
+  if (keys.length < 2) return null;
+  const mid = (list) => { const s = list.slice().sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
+  const dayMid = (d) => mid(days[d].mathStartMs);
+  const recent = mid(keys.slice(-span).map(dayMid));
+  const older = keys.slice(-span * 2, -span).map(dayMid);
+  if (!older.length) return { now: Math.round(recent), before: null, direction: "new" };
+  const before = mid(older);
+  const direction = recent < before * 0.9 ? "faster" : recent > before * 1.1 ? "slower" : "same";
+  return { now: Math.round(recent), before: Math.round(before), direction };
+}
+
+/** The fact worth ten minutes tonight, said so a grown-up can act on it. */
+export function factTip(facts) {
+  const worst = hardestFacts(facts, 1)[0];
+  if (!worst) return null;
+  const n = facts[worst].helps;
+  const pretty = worst.replace("+", " + ").replace("-", " − ");
+  return "Practice " + pretty + ": she needed help " + n + (n === 1 ? " time." : " times.");
 }

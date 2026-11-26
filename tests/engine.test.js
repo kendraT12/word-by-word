@@ -529,3 +529,67 @@ test("sessionOver: the limit can be set, and a missing start never ends the less
   eq(E.sessionOver(0, 99999999), false);
   eq(E.sessionOver(null, 99999999), false);
 });
+
+// ---- Maths, Task 8: what a grown-up sees ----
+test("streak: her reading days and her maths days make separate runs", () => {
+  const days = {
+    "2026-11-24": { minutes: 10 },
+    "2026-11-25": { mathMinutes: 8 },
+    "2026-11-26": { minutes: 9, mathMinutes: 7 },
+  };
+  const readDays = Object.keys(days).filter((k) => days[k].minutes);
+  const mathDays = Object.keys(days).filter((k) => days[k].mathMinutes);
+  eq(E.streak(readDays, "2026-11-26"), 1);
+  eq(E.streak(mathDays, "2026-11-26"), 2);
+});
+test("answerSpeed: nothing to compare until she has answered on two days", () => {
+  eq(E.answerSpeed({}), null);
+  eq(E.answerSpeed({ "2026-11-24": { mathStartMs: [3000, 4000] } }), null);
+});
+test("answerSpeed: says she is getting quicker when she is", () => {
+  const days = {
+    "2026-11-20": { mathStartMs: [6000, 5000, 7000] },
+    "2026-11-21": { mathStartMs: [5000, 6000, 5000] },
+    "2026-11-22": { mathStartMs: [5000, 5000, 6000] },
+    "2026-11-24": { mathStartMs: [2000, 2500, 2000] },
+    "2026-11-25": { mathStartMs: [2000, 1800, 2200] },
+    "2026-11-26": { mathStartMs: [1900, 2000, 2100] },
+  };
+  const got = E.answerSpeed(days);
+  eq(got.direction, "faster");
+  eq(got.now, 2000);
+  eq(got.before, 5000);
+});
+test("answerSpeed: a small wobble is not a change", () => {
+  const same = (ms) => ({ mathStartMs: [ms, ms, ms] });
+  const got = E.answerSpeed({
+    "2026-11-20": same(3000), "2026-11-21": same(3000), "2026-11-22": same(3000),
+    "2026-11-24": same(3100), "2026-11-25": same(3000), "2026-11-26": same(2900),
+  });
+  eq(got.direction, "same");
+});
+test("answerSpeed: her first few days report a time with nothing to compare it to", () => {
+  const got = E.answerSpeed({ "2026-11-25": { mathStartMs: [4000] }, "2026-11-26": { mathStartMs: [3000] } });
+  eq(got.direction, "new");
+  eq(got.before, null);
+});
+test("factTip: names the fact she needs help with most, in words a grown-up can act on", () => {
+  eq(E.factTip({}), null);
+  eq(E.factTip({ "8+5": { status: "practicing", helps: 3 }, "7-2": { status: "practicing", helps: 1 } }),
+    "Practice 8 + 5: she needed help 3 times.");
+  eq(E.factTip({ "15-7": { status: "practicing", helps: 1 } }),
+    "Practice 15 − 7: she needed help 1 time.");
+});
+test("progressSummary: says nothing about maths until she has done some", () => {
+  const content = { STEPS: [{ id: 1, name: "Short a and i", words: [{ w: "cat" }, { w: "hat" }] }] };
+  const base = { profile: { name: "Ada", step: 1 }, words: { cat: { status: "learned" } }, days: { "2026-11-26": { minutes: 12 } }, content, today: "2026-11-26" };
+  ok(!E.progressSummary(base).includes("Maths"));
+  const withMaths = E.progressSummary({ ...base, facts: { "3+4": { status: "learned" } }, profile: { name: "Ada", step: 1, mathLevel: 2 } });
+  ok(withMaths.includes("Maths"), withMaths);
+  ok(withMaths.includes("Knows cold: 1"), withMaths);
+});
+test("buildMathLesson: her very first lesson has no Fast Facts, because she has met none", () => {
+  const l = E.buildMathLesson({ profile: { mathLevel: 5 }, facts: {}, content: MC, today: "2026-11-26" });
+  eq(l.warmup, []);
+  eq(l.newFamilies.length, 2);
+});

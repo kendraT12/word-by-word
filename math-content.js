@@ -29,6 +29,12 @@ export function familyOf(a, b) {
   return [factKey(a, "+", b), factKey(b, "+", a), factKey(sum, "-", a), factKey(sum, "-", b)];
 }
 
+/** A fact written out for a person to read: "7-3" becomes "7 \u2212 3". */
+export function prettyFact(key) {
+  const q = partsOf(key);
+  return q ? q.a + (q.op === "+" ? " + " : " \u2212 ") + q.b : String(key);
+}
+
 /** Every fact a level puts in front of her: the new families, then what it drills again. */
 export function keysOfLevel(level) {
   const out = [];

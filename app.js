@@ -3,10 +3,12 @@
 import * as E from "./engine.js";
 import * as P from "./platform.js";
 import * as C from "./content.js";
+import * as MC from "./math-content.js";
 import { state, today, show, screen, save, practiceDays, dayLog } from "./state.js";
 import { el, div, p, h, btn, card, field, mount, bar, wordEl, sleep } from "./ui.js";
 import "./word.js";
 import "./lesson.js";
+import "./math-lesson.js";
 
 const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -15,23 +17,39 @@ const dayName = (key) => { const [y, m, d] = key.split("-").map(Number); return 
 
 // ---------- Her home screen ----------
 
+// Two doors: Reading and Maths. She picks. Separate streaks, and a plain line of words
+// saying what she has already done today — a marker, never a nag, and never a picture.
 screen("home", () => {
   const prof = state.profile;
-  const days = practiceDays();
-  const run = E.streak(days, today());
+  const readDays = practiceDays("reading");
+  const mathDays = practiceDays("maths");
+  const readRun = E.streak(readDays, today());
+  const mathRun = E.streak(mathDays, today());
   const learned = Object.keys(state.words).filter((w) => state.words[w].status === "learned").length;
-  const doneToday = days.includes(today());
+  const knownFacts = E.fluencyCounts(state.facts).instant;
+  const readToday = readDays.includes(today());
+  const mathToday = mathDays.includes(today());
+  const needCheck = !prof.mathCheckDone;
+  const runLine = (n) => (n > 0 ? " \u00b7 " + n + (n === 1 ? " day in a row" : " days in a row") : "");
 
   mount([
     card([
       h(1, "Hi, " + prof.name + "!"),
-      p("muted", doneToday ? "You already read today. Want to do some more?" : "Ready to read?"),
-      btn(doneToday ? "Read some more" : "Start today's reading", () => show("lesson"), "primary big"),
+      p("muted", readToday && mathToday ? "You have done both today. Want to do some more?" : "What do you want to do today?"),
     ]),
     card([
-      div("spread", [h(2, "Your words"), el("span", { class: "muted nums", text: learned + " learned" })]),
-      run > 0 ? p("", "You have read " + run + (run === 1 ? " day in a row." : " days in a row.")) : p("muted", "Read today to start a streak."),
+      div("spread", [h(2, "Reading"), el("span", { class: "small muted", text: readToday ? "Done today" : "" })]),
+      p("small muted nums", learned + (learned === 1 ? " word" : " words") + " read whole" + runLine(readRun)),
+      btn(readToday ? "Read some more" : "Start today's reading", () => show("lesson"), "primary big"),
       btn("See my words", () => show("collection")),
+    ]),
+    card([
+      div("spread", [h(2, "Maths"), el("span", { class: "small muted", text: mathToday ? "Done today" : "" })]),
+      p("small muted nums", needCheck
+        ? "A few sums first, so we know where to start you."
+        : knownFacts + (knownFacts === 1 ? " fact" : " facts") + " you just know" + runLine(mathRun)),
+      btn(needCheck ? "Start my sums" : mathToday ? "Do some more maths" : "Start today's maths",
+        () => show(needCheck ? "mathCheckIntro" : "mathLesson"), "primary big"),
     ]),
     el("div", { class: "row", style: "justify-content:center" }, [btn("Grown-ups", () => show("parentGate"), "quiet")]),
   ]);
@@ -156,7 +174,7 @@ function everydayChecklist() {
 }
 
 function shareProgressControls() {
-  const text = E.progressSummary({ profile: state.profile, words: state.words, days: state.days, content: C, today: today() });
+  const text = E.progressSummary({ profile: state.profile, words: state.words, facts: state.facts, days: state.days, content: C, today: today() });
   const box = el("pre", {
     class: "small", text,
     style: "white-space:pre-wrap;background:var(--sunk);border-radius:10px;padding:12px 14px;margin:0;font-family:var(--ui);overflow-x:auto",
@@ -199,6 +217,16 @@ screen("parent", () => {
   const sounds = prof.placement && prof.placement.sounds;
   const fluency = E.fluencyCounts(state.words);
   const soundingOut = E.slowWords(state.words);
+  const mathFluency = E.fluencyCounts(state.facts);
+  const stillCounting = E.slowWords(state.facts);
+  const mathLevel = MC.levelById(prof.mathLevel || 1);
+  const levelDone = E.levelProgress(mathLevel.id, state.facts, MC);
+  const speed = E.answerSpeed(state.days);
+  const hardFacts = E.hardestFacts(state.facts);
+  const factTip = E.factTip(state.facts);
+  const fade = E.fadeNote(state.days);
+  const mathRecent = Object.keys(state.days).sort().filter((d) => state.days[d].mathMinutes).slice(-14);
+  const prettyFact = MC.prettyFact;
 
   mount([
     card([
@@ -287,6 +315,47 @@ screen("parent", () => {
     ]),
 
     card([
+      h(2, "Maths facts"),
+      p("tiny muted", "The same rule as her reading: a fact counts only once she just knows it, not when she can work it out."),
+      Object.keys(state.facts).length ? null : p("muted", "She has not started her maths yet."),
+      Object.keys(state.facts).length ? div("spread", [el("span", { text: "Knows right away" }), el("span", { class: "muted small nums", text: String(mathFluency.instant) })]) : null,
+      Object.keys(state.facts).length ? bar(mathFluency.instant + mathFluency.slow ? mathFluency.instant / (mathFluency.instant + mathFluency.slow) : 0) : null,
+      Object.keys(state.facts).length ? div("spread", [el("span", { text: "Still works them out" }), el("span", { class: "muted small nums", text: String(mathFluency.slow) })]) : null,
+      stillCounting.length
+        ? div("chips", stillCounting.slice(0, 20).map((k) => el("span", { class: "chip nums", text: prettyFact(k) })))
+        : null,
+      prof.mathCheckDone ? div("divider") : null,
+      prof.mathCheckDone ? div("spread", [
+        el("strong", { text: "Level " + mathLevel.id + ": " + mathLevel.name }),
+        el("span", { class: "muted small nums", text: levelDone.learned + " of " + levelDone.total + " facts" }),
+      ]) : null,
+      prof.mathCheckDone ? bar(levelDone.pct) : null,
+      prof.mathCheckDone ? p("tiny muted", mathLevel.idea) : null,
+      prof.mathCheckDone ? p("tiny muted", "She moves up at about 8 facts in 10 of this level. Levels past " + E.MAX_PLACEMENT_LEVEL + " are only ever earned by answering.") : null,
+      speed && speed.direction !== "new" ? p("small", "Time to answer: " + (speed.now / 1000).toFixed(1) + " seconds, was " + (speed.before / 1000).toFixed(1)
+        + (speed.direction === "faster" ? ". She is getting quicker." : speed.direction === "slower" ? ". Slower than before." : ". About the same.")) : null,
+      speed && speed.direction === "new" ? p("small muted", "Time to answer: " + (speed.now / 1000).toFixed(1) + " seconds. A few more days and this will show whether it is falling.") : null,
+      hardFacts.length ? div("list", hardFacts.map((k) => div("spread", [
+        el("span", { class: "chip nums", text: prettyFact(k) }),
+        el("span", { class: "muted small nums", text: "needed help " + state.facts[k].helps + (state.facts[k].helps === 1 ? " time" : " times") }),
+      ]))) : null,
+      factTip ? p("", factTip) : null,
+      fade ? div("note", [p("small", fade), p("tiny muted", "The app will not shorten her lesson on its own. That is your call.")]) : null,
+    ]),
+
+    card([
+      h(2, "Maths minutes"),
+      mathRecent.length
+        ? div("list", mathRecent.slice().reverse().map((d) => div("row", [
+            el("span", { class: "small nums", style: "width:84px", text: dayName(d) + " " + prettyDate(d) }),
+            el("span", { class: "grow" }, [bar((state.days[d].mathMinutes || 0) / (prof.mathGoalMin || 20))]),
+            el("span", { class: "small nums muted", style: "width:52px;text-align:right", text: Math.round(state.days[d].mathMinutes || 0) + "m" }),
+          ])))
+        : p("muted", "No maths lessons yet."),
+      p("tiny muted", "The bar is full at her " + (prof.mathGoalMin || 20) + "-minute goal. Twenty minutes of maths on top of twenty of reading is a lot for a 7-year-old. If she starts to tail off within a sitting, the app will say so in her maths card and leave the decision to you."),
+    ]),
+
+    card([
       h(2, "Words she has learned"),
       learnedWords.length ? div("chips", learnedWords.map((w) => el("span", { class: "chip", text: w }))) : p("muted", "None yet."),
     ]),
@@ -320,6 +389,12 @@ screen("parent", () => {
         state.profile.placementDone = false;
         save({ profile: true });
         show("placementIntro");
+      }),
+      p("small muted", "The maths check is separate. Running it again moves her level; the facts she knows are kept."),
+      btn("Run the maths check again", () => {
+        state.profile.mathCheckDone = false;
+        save({ profile: true });
+        show("mathCheckIntro");
       }),
     ]),
   ]);

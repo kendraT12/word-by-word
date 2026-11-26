@@ -215,9 +215,12 @@ const factLine = (key) => {
   return q.a + " " + opSign(q.op) + " " + q.b + " = " + MC.answerOf(key);
 };
 
-/** Step 1. She answers before the app says anything, and the bar is running. */
-async function stepTried(key) {
+/** Step 1. She answers before the app says anything, and the bar is running.
+ *  Its `startedMs` is the only timed one in the routine, so it is what the parent
+ *  corner's "is she getting quicker" is built from. */
+async function stepTried(key, out) {
   const r = await askFact(key, { note: "Try it" });
+  if (out && r.startedMs) out.triedMs = r.startedMs;
   return r.quality === "miss" ? "help" : r.quality;
 }
 
@@ -298,7 +301,7 @@ export async function runFact(fam, { levelId = 1, words = {}, content = null, id
     try { result[name] = await fn(); } catch { result[name] = "help"; }
   };
 
-  await run("tried", () => stepTried(keys[0]));
+  await run("tried", () => stepTried(keys[0], result));
   await run("family", () => stepFamily(keys));
   await run("why", () => stepWhy(fam, idea));
 

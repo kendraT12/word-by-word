@@ -76,6 +76,7 @@ async function runMathLesson() {
     step();
     const before = state.facts[key];
     const r = await askFact(key, { note: "Fast Facts" });
+    if (r.startedMs) log.mathStartMs.push(r.startedMs);
     state.facts[key] = E.applyFast(before, r.quality, today());
     learnedCheck(key, before);
     await noteItem([r.quality]);
@@ -90,6 +91,7 @@ async function runMathLesson() {
     const result = await runFact(fam, {
       levelId: plan.level, words: state.words, content: C, idea: level.idea,
     });
+    if (result.triedMs) log.mathStartMs.push(result.triedMs);
     // The whole family moves together: she met every fact in it just now.
     for (const key of keys) {
       const before = state.facts[key];
@@ -104,6 +106,7 @@ async function runMathLesson() {
     if (outOfTime()) break;
     step();
     const r = await askFact(key, { note: "Do you still know this one?" });
+    if (r.startedMs) log.mathStartMs.push(r.startedMs);
     state.facts[key] = E.applyReview(state.facts[key], r.quality, today());
     await noteItem([r.quality]);
   }
@@ -160,7 +163,7 @@ screen("mathFinish", () => {
       lesson.learnedNow.length
         ? div("stack", [
             p("center muted", "You just knew these today:"),
-            div("chips", lesson.learnedNow.map((k) => el("span", { class: "chip nums", text: k }))),
+            div("chips", lesson.learnedNow.map((k) => el("span", { class: "chip nums", text: MC.prettyFact(k) }))),
           ])
         : p("center muted", "Those come back tomorrow as Fast Facts."),
       p("center", "You know " + known.instant + (known.instant === 1 ? " fact" : " facts") + " without working them out."),
