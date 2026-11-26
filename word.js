@@ -13,7 +13,8 @@ const withName = (s) => String(s).replaceAll("{name}", state.profile ? state.pro
 let header = "";
 export function setHeader(text) { header = text; }
 
-function stage(kids) {
+/** The one card the lesson lives in. Exported so the maths screens share the header. */
+export function stage(kids) {
   mount([header ? p("small muted center", header) : null, card(kids)]);
 }
 

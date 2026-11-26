@@ -180,3 +180,17 @@ export const WORD_PROBLEMS = {
     { op: "-", text: "The cat had {a} socks. {b} of them went in the mud." },
   ],
 };
+
+// ---------- The keypad ----------
+
+/** She has no submit button to find mid-drill: the answer settles on its own.
+ *  How long to wait depends on whether another digit could still be coming. */
+export const SETTLE_MS = 1000;
+export const FINAL_MS = 250;
+
+export function settleDelay(typed, answerMax = 20) {
+  const s = String(typed === null || typed === undefined ? "" : typed);
+  if (s.length !== 1) return FINAL_MS;
+  for (let n = 10; n <= answerMax; n++) if (String(n).charAt(0) === s) return SETTLE_MS;
+  return FINAL_MS;
+}

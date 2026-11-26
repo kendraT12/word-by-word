@@ -81,3 +81,19 @@ test("content: no emoji anywhere in the maths content", () => {
   const all = JSON.stringify([M.LEVELS, M.WORD_PROBLEMS]);
   ok(!/\p{Extended_Pictographic}/u.test(all));
 });
+
+// ---- The keypad: how long to wait before taking her digits as her answer ----
+
+// Review Focus 2 — she means 12 and has only tapped the 1.
+test("settleDelay: waits longer when another digit could still follow", () => {
+  ok(M.settleDelay("1") >= 1000, "1 could become 10 to 19");
+  eq(M.settleDelay("2"), 1000, "2 could become 20");
+  ok(M.settleDelay("3") < 1000, "nothing above 20 starts with 3, so 3 is final");
+  ok(M.settleDelay("9") < 1000, "9 is final");
+  ok(M.settleDelay("12") < 1000, "two digits is always final");
+  ok(M.settleDelay("0") < 1000, "no answer starts with a nothing digit");
+});
+test("settleDelay: a bigger answer changes which first digits can still grow", () => {
+  ok(M.settleDelay("3", 30) >= 1000, "with answers up to 30, a 3 could become 30");
+  ok(M.settleDelay("4", 30) < 1000);
+});
