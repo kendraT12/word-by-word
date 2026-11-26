@@ -97,3 +97,66 @@ test("settleDelay: a bigger answer changes which first digits can still grow", (
   ok(M.settleDelay("3", 30) >= 1000, "with answers up to 30, a 3 could become 30");
   ok(M.settleDelay("4", 30) < 1000);
 });
+
+// ---- Word problems: she is never shown one she cannot read ----
+import * as C from "../content.js";
+import { tokens } from "../engine.js";
+
+const learned = () => ({ status: "learned", lvl: 1, due: "2026-12-01", helps: 0, seen: 1, lastSeen: "2026-11-20", slow: false });
+
+// Review Focus 3 — a problem she cannot read renders perfectly and teaches nothing.
+test("problemFor: skips a problem holding a word she has not been taught", () => {
+  const words = { the: learned(), pig: learned() };
+  eq(M.problemFor(1, "4+3", { words, content: C }), null);
+});
+test("problemFor: offers one when every word in it is hers", () => {
+  const words = { the: learned(), cat: learned(), hat: learned() };
+  const got = M.problemFor(1, "4+3", { words, content: C });
+  ok(got && got.text === "The cat had 4 hats. Mom got him 3 hats.", got && got.text);
+});
+test("problemFor: a plural counts as the word it comes from", () => {
+  const words = { bag: learned() };
+  eq(M.problemFor(5, "6+2", { words, content: C }), null);
+  words.sock = learned();
+  ok(M.problemFor(5, "6+2", { words, content: C }).text.includes("6 socks"));
+});
+test("problemFor: a taking-away fact gets a taking-away problem", () => {
+  const words = { chip: learned(), of: learned(), we: learned() };
+  const got = M.problemFor(5, "8-3", { words, content: C });
+  ok(got && got.text === "We had 8 chips. I had 3 of them.", got && got.text);
+});
+test("problemFor: a fact that is not a fact gets nothing", () => {
+  eq(M.problemFor(1, "nonsense", { words: {}, content: C }), null);
+});
+test("problems: every word in every template is one the app teaches or treats as given", () => {
+  const taught = new Set();
+  C.STEPS.forEach((s) => s.words.forEach((e) => taught.add(e.w.toLowerCase())));
+  C.SIGHT.forEach((e) => taught.add(e.w.toLowerCase()));
+  C.EVERYDAY.forEach((e) => taught.add(e.w.toLowerCase()));
+  C.HELPERS.forEach((w) => taught.add(w.toLowerCase()));
+  const bad = [];
+  for (const id of Object.keys(M.WORD_PROBLEMS)) {
+    for (const entry of M.WORD_PROBLEMS[id]) {
+      const text = entry.text.replaceAll("{a}", "7").replaceAll("{b}", "4");
+      for (const t of tokens(text)) {
+        if (/^\d+$/.test(t) || taught.has(t) || taught.has(t.replace(/s$/, ""))) continue;
+        bad.push("level " + id + ": " + t);
+      }
+    }
+  }
+  eq(bad, []);
+});
+test("whyLine: says the adding and the taking away in one breath", () => {
+  eq(M.whyLine(3, 4), "3 and 4 make 7. So 7 take away 3 is 4.");
+  eq(M.whyLine(4, 4), "4 and 4 make 8. So 8 take away 4 is 4.");
+});
+test("problemFor: borrows another level's problem rather than skip the step", () => {
+  const words = { the: learned(), cat: learned(), hat: learned() };
+  const got = M.problemFor(6, "9+4", { words, content: C });
+  ok(got && got.text === "The cat had 9 hats. Mom got him 4 hats.", got && got.text);
+});
+test("problemFor: her own level's problem is preferred when she can read it", () => {
+  const words = { the: learned(), cat: learned(), hat: learned(), shop: learned(), drum: learned() };
+  const got = M.problemFor(6, "9+4", { words, content: C });
+  ok(got && got.text.includes("drums"), got && got.text);
+});

@@ -1,6 +1,8 @@
 // Fast Facts: the ladder of addition and subtraction facts, and the word problems.
 // Pure content and pure helpers — no browser, so the tests can read all of it.
 
+import { unknownWords } from "./engine.js";
+
 // ---------- Facts and fact families ----------
 
 /** A fact is a string: "3+4", "7-3". op is "+" or "-". */
@@ -193,4 +195,45 @@ export function settleDelay(typed, answerMax = 20) {
   if (s.length !== 1) return FINAL_MS;
   for (let n = 10; n <= answerMax; n++) if (String(n).charAt(0) === s) return SETTLE_MS;
   return FINAL_MS;
+}
+
+// ---------- Why a fact works, and the problem that uses it ----------
+
+/** The one line she reads herself in step three. One family, said out loud. */
+export function whyLine(a, b) {
+  const sum = a + b;
+  return a + " and " + b + " make " + sum + ". So " + sum + " take away " + a + " is " + b + ".";
+}
+
+/** The taught words in a problem that she cannot read yet.
+ *
+ *  `unknownWords` knows only the exact spellings the lessons teach, so "chips" would slip
+ *  past it untouched. Checking a singular copy of the text as well catches the plurals,
+ *  which is every noun in these problems. */
+function hardWords(text, words, content) {
+  const singular = String(text).replace(/([A-Za-z]+)s\b/g, "$1");
+  const out = unknownWords(text, words, content);
+  for (const w of unknownWords(singular, words, content)) if (!out.includes(w)) out.push(w);
+  return out;
+}
+
+/**
+ * A short problem in words for this fact, or null when none of the level's problems is
+ * one she can read. Skipping is the right answer then: the fact is taught on numerals
+ * alone rather than hidden behind words she has not met.
+ */
+export function problemFor(levelId, key, { words = {}, content = null, elsewhere = true } = {}) {
+  const parts = partsOf(key);
+  if (!parts || !content) return null;
+  // Her own level's problems first; then any level's, because a problem she can read is
+  // worth more than one that matches the level she happens to be on.
+  const ids = [String(levelId)].concat(elsewhere ? Object.keys(WORD_PROBLEMS).filter((k) => k !== String(levelId)) : []);
+  for (const id of ids) {
+    for (const entry of WORD_PROBLEMS[id] || []) {
+      if (entry.op !== parts.op) continue;
+      const text = entry.text.replaceAll("{a}", String(parts.a)).replaceAll("{b}", String(parts.b));
+      if (hardWords(text, words, content).length === 0) return { text, key };
+    }
+  }
+  return null;
 }

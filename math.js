@@ -3,7 +3,7 @@
 
 import * as MC from "./math-content.js";
 import { say } from "./state.js";
-import { el, p, btn, bar, sleep } from "./ui.js";
+import { el, p, btn, bar, sleep, tappableText } from "./ui.js";
 import { stage } from "./word.js";
 
 /** How long she may take to start answering and still have known the fact rather than
@@ -194,4 +194,116 @@ export async function askFacts(keys, opts = {}) {
     if (opts.onEach) await opts.onEach(out[out.length - 1], i);
   }
   return out;
+}
+
+// ---------- A new fact, in four steps ----------
+//
+// The same shape as a new word, for the same reason: she tries it, she sees the whole
+// family, she reads why it works, then she uses it.
+//
+// Each step reports "ok", "slow" or "help", so engine.applyRoutine reads a maths result
+// exactly as it reads a reading one. One rule decides them all: a fact counts as learned
+// only when she knew it on the first try, with no help.
+//
+// Reading help is never a maths mistake. Asking for the explanation or the problem to be
+// read out reports "slow", not "help", so her reading never costs her a fact she knows.
+
+export const MATH_STEPS = ["tried", "family", "why", "problem"];
+
+const factLine = (key) => {
+  const q = MC.partsOf(key);
+  return q.a + " " + opSign(q.op) + " " + q.b + " = " + MC.answerOf(key);
+};
+
+/** Step 1. She answers before the app says anything, and the bar is running. */
+async function stepTried(key) {
+  const r = await askFact(key, { note: "Try it" });
+  return r.quality === "miss" ? "help" : r.quality;
+}
+
+/** Step 2. The whole family, one fact at a time, with what she has already got shown
+ *  above it. Untimed: this is where the family is learned, not where it is raced. */
+async function stepFamily(keys) {
+  let missed = false;
+  for (let i = 1; i < keys.length; i++) {
+    const done = keys.slice(0, i).map((k) => el("span", { class: "chip nums", text: factLine(k) }));
+    stage([
+      p("small muted center", "The same numbers, the other way round"),
+      el("div", { class: "chips", style: "justify-content:center" }, done),
+      p("center small muted", "Now this one."),
+    ]);
+    await sleep(700);
+    const r = await askFact(keys[i], { timed: false, note: "The same family" });
+    if (!r.correct) missed = true;
+  }
+  return missed ? "help" : "ok";
+}
+
+/** Step 3. One line she reads herself. */
+function stepWhy(fam, idea) {
+  return new Promise((resolve) => {
+    const line = MC.whyLine(fam[0], fam[1]);
+    const show = (controls) => stage([
+      p("small muted center", "Why it works"),
+      idea ? p("note center", idea) : null,
+      el("p", { class: "reading center", text: line }),
+      el("div", { class: "row", style: "justify-content:center" }, controls),
+    ]);
+    show([
+      btn("I read it", () => resolve("ok"), "primary big"),
+      btn("Read it to me", async () => {
+        show([]);
+        await say(idea ? idea + " " + line : line);
+        show([btn("I read it", () => resolve("slow"), "primary big")]);
+      }, "quiet"),
+    ]);
+  });
+}
+
+/** Step 4. A problem in words, every word of which is one she has been taught. */
+async function stepProblem(problem, key) {
+  let heard = false;
+  const read = await new Promise((resolve) => {
+    const show = (controls) => stage([
+      p("small muted center", "Use it"),
+      tappableText(problem.text, (word) => { heard = true; say(word); }),
+      el("div", { class: "row", style: "justify-content:center" }, controls),
+    ]);
+    show([
+      btn("I read it", () => resolve(true), "primary big"),
+      btn("Read it to me", async () => {
+        heard = true;
+        show([]);
+        await say(problem.text);
+        show([btn("I read it", () => resolve(true), "primary big")]);
+      }, "quiet"),
+    ]);
+  });
+  if (!read) return "help";
+  const r = await askFact(key, { timed: false, note: "So how many?" });
+  if (!r.correct) return "help";
+  return heard ? "slow" : "ok";
+}
+
+/**
+ * Teaches one fact family. `fam` is a pair like [3, 4].
+ * Resolves `{ tried, family, why, problem }`; `problem` is missing when no problem in
+ * words is readable for her yet, and a missing step never counts as needing help.
+ */
+export async function runFact(fam, { levelId = 1, words = {}, content = null, idea = "" } = {}) {
+  const keys = MC.familyOf(fam[0], fam[1]);
+  const result = {};
+  const run = async (name, fn) => {
+    // A thrown error must not leave a child sitting alone in front of a frozen screen.
+    try { result[name] = await fn(); } catch { result[name] = "help"; }
+  };
+
+  await run("tried", () => stepTried(keys[0]));
+  await run("family", () => stepFamily(keys));
+  await run("why", () => stepWhy(fam, idea));
+
+  const problem = MC.problemFor(levelId, keys[0], { words, content })
+    || (keys.length > 2 ? MC.problemFor(levelId, keys[2], { words, content }) : null);
+  if (problem) await run("problem", () => stepProblem(problem, problem.key));
+  return result;
 }
