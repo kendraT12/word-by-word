@@ -378,3 +378,19 @@ test("chooseStory: once she can read one, every other day is an everyday story",
 test("chooseStory: no step stories for her step falls back to step 1", () => {
   ok(E.chooseStory({ step: 9, words: {}, content, stories: stepStories, everydayStories: [], dayCount: 0 }).title === "S1");
 });
+
+// ---- Maths, Task 1: the routine's step names are not the reading's ----
+const MSTEPS = ["tried", "family", "why", "problem"];
+test("applyRoutine: a maths result marks a fact learned when she knew it first try", () => {
+  const r = { tried: "ok", family: "ok", why: "ok", problem: "ok" };
+  const s = E.applyRoutine(null, r, "2026-11-26", MSTEPS, "tried");
+  eq(s.status, "learned"); eq(s.lvl, 1); eq(s.slow, false);
+});
+test("applyRoutine: a fact she worked out is practising, not learned", () => {
+  const s = E.applyRoutine(null, { tried: "slow", family: "ok", why: "ok", problem: "ok" }, "2026-11-26", MSTEPS, "tried");
+  eq(s.status, "practicing"); eq(s.slow, true);
+});
+test("applyRoutine: a maths step she needed help on counts as a help", () => {
+  const s = E.applyRoutine(null, { tried: "ok", family: "help", why: "ok", problem: "ok" }, "2026-11-26", MSTEPS, "tried");
+  eq(s.status, "practicing"); eq(s.helps, 1); eq(s.slow, false);
+});

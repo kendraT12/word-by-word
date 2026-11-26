@@ -33,16 +33,19 @@ const FRESH = { status: "new", lvl: 0, due: null, helps: 0, seen: 0, lastSeen: n
 
 /** After the four-step routine.
  *  Learned means she read the word whole, with no help. A word she had to sound out first
- *  is not learned: it goes to fast practice (`slow`), where only her speed needs work. */
-export function applyRoutine(state, result, today) {
+ *  is not learned: it goes to fast practice (`slow`), where only her speed needs work.
+ *
+ *  `steps` names the four steps and `firstTry` the one that must be read whole, so the
+ *  maths routine (tried, family, why, problem) uses the same rule as the reading one. */
+export function applyRoutine(state, result, today, steps = STEPS_OF_ROUTINE, firstTry = "say") {
   const prev = state || FRESH;
-  const helped = STEPS_OF_ROUTINE.filter((k) => result[k] === "help").length;
+  const helped = steps.filter((k) => result[k] === "help").length;
   const base = { helps: (prev.helps || 0) + helped, seen: (prev.seen || 0) + 1, lastSeen: today };
-  if (helped === 0 && result.say === "ok") {
+  if (helped === 0 && result[firstTry] === "ok") {
     return { ...base, status: "learned", lvl: 1, due: addDays(today, intervalFor(1)), slow: false };
   }
   // Sounding it out is not a mistake, so it never counts as needing help.
-  return { ...base, status: "practicing", lvl: 0, due: addDays(today, 1), slow: helped === 0 && result.say === "slow" };
+  return { ...base, status: "practicing", lvl: 0, due: addDays(today, 1), slow: helped === 0 && result[firstTry] === "slow" };
 }
 
 /** quality: "ok" read whole, "slow" sounded out first, "miss" could not read it. */
